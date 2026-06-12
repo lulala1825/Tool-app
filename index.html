@@ -49,7 +49,7 @@ button { border: 0; color: inherit; background: none; }
   display: grid;
   grid-template-rows: minmax(0, 1fr) var(--sheet-h, 30vh);
   background: var(--bg);
-  transition: grid-template-rows 0.05s linear;
+  transition: grid-template-rows 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* iOS Navigation Bar */
@@ -109,9 +109,9 @@ button { border: 0; color: inherit; background: none; }
 }
 .stage {
   position: relative;
-  width: min(100vw - 32px, calc((100dvh - 280px) * 9 / 16), 400px);
+  width: min(100vw - 32px, calc((100dvh - var(--sheet-h, 30vh) - 90px) * 9 / 16), 400px);
   aspect-ratio: 9 / 16;
-  max-height: calc(100dvh - 270px);
+  max-height: calc(100dvh - var(--sheet-h, 30vh) - 80px);
   overflow: hidden;
   border-radius: 20px;
   background:
@@ -121,6 +121,7 @@ button { border: 0; color: inherit; background: none; }
     0 24px 60px rgba(0,0,0,0.45),
     0 0 0 1px rgba(255,255,255,0.08);
   touch-action: none;
+  transition: width 0.3s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 canvas { display: block; width: 100%; height: 100%; }
 
@@ -207,15 +208,11 @@ canvas { display: block; width: 100%; height: 100%; }
   border-radius: 24px 24px 0 0;
   padding: 0 0 calc(env(safe-area-inset-bottom));
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
   -webkit-overflow-scrolling: touch;
 }
-.control-sheet::-webkit-scrollbar { width: 6px; }
-.control-sheet::-webkit-scrollbar-track { background: transparent; }
-.control-sheet::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 999px; }
 
 .sheet-handle-wrap {
   padding: 10px 0 2px;
@@ -227,6 +224,7 @@ canvas { display: block; width: 100%; height: 100%; }
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 .sheet-handle {
   width: 36px; height: 5px;
@@ -251,6 +249,7 @@ canvas { display: block; width: 100%; height: 100%; }
   overflow-x: auto;
   padding: 8px 16px 4px;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 .sheet-tabs::-webkit-scrollbar { display: none; }
 .sheet-tab {
@@ -271,7 +270,19 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 /* Sheet Panels */
-.sheet-panels { position: relative; }
+.sheet-panels {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.sheet-panels::-webkit-scrollbar { width: 6px; }
+.sheet-panels::-webkit-scrollbar-track { background: transparent; }
+.sheet-panels::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 999px; }
 .sheet-panel {
   display: none;
   padding: 12px 16px 20px;
@@ -686,6 +697,7 @@ input[type="range"]::-moz-range-thumb {
           <label class="ios-list-item"><span>显示身体</span><input id="bodyToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
           <label class="ios-list-item"><span>显示脸部</span><input id="faceToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
           <label class="ios-list-item"><span>显示腿部</span><input id="legToggle" type="checkbox"><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+          <label class="ios-list-item"><span>显示底色</span><input id="fillToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
         </div>
       </div>
       <div class="sheet-panel" data-panel="text">
@@ -940,6 +952,7 @@ input[type="range"]::-moz-range-thumb {
   const bodyToggle = document.getElementById("bodyToggle");
   const faceToggle = document.getElementById("faceToggle");
   const legToggle = document.getElementById("legToggle");
+  const fillToggle = document.getElementById("fillToggle");
   const textToggle = document.getElementById("textToggle");
   const detectBtn = document.getElementById("detectBtn");
   const centerBtn = document.getElementById("centerBtn");
@@ -1297,6 +1310,7 @@ input[type="range"]::-moz-range-thumb {
   function createSubject(overrides = {}) {
     const index = state.subjects.length;
     const baseEmotion = overrides.emotion || "happy";
+    const baseMood = emotions[baseEmotion] || emotions.happy;
     const basePhrase = pickPhrase(baseEmotion);
     return {
       id: makeId(),
@@ -1307,6 +1321,7 @@ input[type="range"]::-moz-range-thumb {
       faceStyle: "classic",
       textScale: 28,
       emotion: baseEmotion,
+      color: overrides.color || baseMood.swatch,
       legMode: "stand",
       bubbleStyle: "speech",
       bubbleScale: 1,
@@ -1325,6 +1340,7 @@ input[type="range"]::-moz-range-thumb {
       showFace: true,
       showLegs: false,
       showText: true,
+      showFill: true,
       phase: Math.random() * Math.PI * 2,
       ...overrides
     };
@@ -1391,6 +1407,7 @@ input[type="range"]::-moz-range-thumb {
     bodyToggle.disabled = !enabled;
     faceToggle.disabled = !enabled;
     legToggle.disabled = !enabled;
+    fillToggle.disabled = !enabled;
     textToggle.disabled = !enabled;
     captionInput.disabled = !enabled;
     personaInput.disabled = !enabled;
@@ -1428,6 +1445,7 @@ input[type="range"]::-moz-range-thumb {
     bodyToggle.checked = subject.showBody !== false;
     faceToggle.checked = subject.showFace !== false;
     legToggle.checked = subject.showLegs === true;
+    fillToggle.checked = subject.showFill !== false;
     textToggle.checked = subject.showText !== false;
   }
 
@@ -1855,11 +1873,13 @@ input[type="range"]::-moz-range-thumb {
       drawLegs(subject, mood, subject.x, bodyY, bodyR, t, pulse, quick);
     }
     if (subject.showBody !== false) {
-      drawBody(subject, mood, subject.x, bodyY, bodyR, pulse, quick);
+      if (subject.showFill !== false) {
+        drawBody(subject, mood, subject.x, bodyY, bodyR, pulse, quick);
+      }
       drawArms(subject, mood, subject.x, bodyY, bodyR, t, pulse, quick);
     }
     if (subject.showFace !== false) {
-    drawFace(subject, mood, subject.x, faceY, faceR, t, pulse);
+      drawFace(subject, mood, subject.x, faceY, faceR, t, pulse);
     }
     if (subject.showText !== false) {
       drawBubble(subject, mood, subject.x, bodyY, bodyR, bubbleText);
@@ -1872,7 +1892,7 @@ input[type="range"]::-moz-range-thumb {
     const bodyH = bodyR * 1.38;
     ctx.save();
     ctx.globalAlpha = 0.24;
-    ctx.fillStyle = mood.swatch;
+    ctx.fillStyle = subject.color || mood.swatch;
     ctx.beginPath();
     ctx.ellipse(x, y + bodyR * 0.04, bodyW * 0.58, bodyH * 0.52 + Math.sin(quick) * bodyR * 0.02, -0.08, 0, Math.PI * 2);
     ctx.fill();
@@ -1887,7 +1907,9 @@ input[type="range"]::-moz-range-thumb {
   function drawFace(subject, mood, x, y, faceR, t, pulse) {
     const style = subject.faceStyle || "classic";
     ctx.save();
-    drawFaceBase(subject, mood, x, y, faceR, t, pulse);
+    if (subject.showFill !== false) {
+      drawFaceBase(subject, mood, x, y, faceR, t, pulse);
+    }
     ctx.restore();
 
     ctx.save();
@@ -1904,7 +1926,7 @@ input[type="range"]::-moz-range-thumb {
     const style = subject.faceStyle || "classic";
     if (style === "line" || style === "sticker" || style === "cool") return;
     ctx.globalAlpha = style === "chibi" ? 0.34 : style === "kawaii" ? 0.2 : style === "dramatic" ? 0.22 : 0.14;
-    ctx.fillStyle = style === "chibi" ? mood.swatch : mood.swatch;
+    ctx.fillStyle = subject.color || mood.swatch;
     ctx.beginPath();
     if (style === "chibi") {
       const wobble = Math.sin(t * 3 + subject.phase) * r * 0.03;
@@ -2809,7 +2831,7 @@ input[type="range"]::-moz-range-thumb {
     exportBtn.disabled = false;
     refreshControls();
     // Auto-expand sheet when media loaded
-    if (typeof setSheetHeight === 'function') setSheetHeight(SHEET_LARGE, true);
+    if (typeof setSheetHeight === 'function') setSheetHeight(SHEET_LARGE);
     setStatus(state.sourceType === "video" ? "已导入视频" : "已导入图片");
     showToast("上下拖拽面板横条可展开/收起，点击空白处新增主体。");
   }
@@ -3136,6 +3158,11 @@ input[type="range"]::-moz-range-thumb {
     if (!subject) return;
     subject.showLegs = legToggle.checked;
   });
+  fillToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.showFill = fillToggle.checked;
+  });
   textToggle.addEventListener("change", () => {
     const subject = selectedSubject();
     if (!subject) return;
@@ -3170,18 +3197,11 @@ input[type="range"]::-moz-range-thumb {
   let sheetDragStartVh = 0;
   let sheetDragMoved = false;
 
-  function setSheetHeight(vh, animate = false) {
+  function setSheetHeight(vh) {
     sheetVh = Math.max(SHEET_MIN, Math.min(SHEET_MAX, vh));
     if (appEl) {
-      if (!animate) appEl.style.transition = 'none';
       appEl.style.setProperty('--sheet-h', `${sheetVh}vh`);
-      if (!animate) {
-        requestAnimationFrame(() => {
-          appEl.style.transition = '';
-        });
-      }
     }
-    // Update hint text
     if (sheetExpandHint) {
       sheetExpandHint.textContent = sheetVh > SHEET_LARGE - 8 ? '下滑收起' : '上滑展开更多';
     }
@@ -3190,13 +3210,7 @@ input[type="range"]::-moz-range-thumb {
   function snapSheet() {
     const midpoint = (SHEET_SMALL + SHEET_LARGE) / 2;
     const target = sheetVh > midpoint ? SHEET_LARGE : SHEET_SMALL;
-    // Animate snap
-    if (appEl) appEl.style.transition = 'grid-template-rows 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
     setSheetHeight(target);
-    // Clean up transition after it completes
-    setTimeout(() => {
-      if (appEl) appEl.style.transition = '';
-    }, 350);
     if (target === SHEET_LARGE && controlSheet) {
       controlSheet.scrollTop = 0;
     }
@@ -3226,6 +3240,7 @@ input[type="range"]::-moz-range-thumb {
     const endDrag = () => {
       if (!sheetDragActive) return;
       sheetDragActive = false;
+      if (appEl) appEl.style.transition = '';
       snapSheet();
     };
 
@@ -3236,7 +3251,7 @@ input[type="range"]::-moz-range-thumb {
     sheetHandleWrap.addEventListener('click', (e) => {
       if (sheetDragMoved) return;
       const target = sheetVh > (SHEET_SMALL + SHEET_LARGE) / 2 ? SHEET_SMALL : SHEET_LARGE;
-      setSheetHeight(target, true);
+      setSheetHeight(target);
     });
   }
 
@@ -3255,7 +3270,7 @@ input[type="range"]::-moz-range-thumb {
       sheetPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
       // Auto-expand when switching tabs
       if (sheetVh < SHEET_LARGE - 5) {
-        setSheetHeight(SHEET_LARGE, true);
+        setSheetHeight(SHEET_LARGE);
       }
     });
   });
