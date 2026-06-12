@@ -159,26 +159,17 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 /* Floating Action Buttons */
-.fab-container {
-  position: fixed;
-  bottom: calc(12px + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
+/* Sheet Toolbar — action buttons inside control sheet */
+.sheet-toolbar {
   display: flex;
-  gap: 12px;
-  padding: 8px;
-  background: rgba(30,30,33,0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  gap: 10px;
+  padding: 10px 16px 6px;
+  flex-shrink: 0;
 }
-.fab {
+.sheet-toolbar .action-btn {
+  flex: 1;
   min-height: 46px;
-  padding: 0 22px;
-  border-radius: 999px;
+  border-radius: 14px;
   font-size: 15px;
   font-weight: 700;
   display: inline-flex;
@@ -189,16 +180,16 @@ canvas { display: block; width: 100%; height: 100%; }
   transition: transform 0.15s ease, opacity 0.15s ease;
   border: none;
 }
-.fab:active { transform: scale(0.96); }
-.fab-primary {
+.sheet-toolbar .action-btn:active { transform: scale(0.96); }
+.action-import {
   background: linear-gradient(135deg, #ff6b6b, #ffd166);
   color: #17130f;
 }
-.fab-export {
+.action-export {
   background: linear-gradient(135deg, #38d5a3, #6ec8ff);
   color: #06120f;
 }
-.fab:disabled {
+.sheet-toolbar .action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -213,24 +204,52 @@ canvas { display: block; width: 100%; height: 100%; }
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 0.5px solid var(--border);
   border-radius: 24px 24px 0 0;
-  padding: 0 0 calc(86px + env(safe-area-inset-bottom));
-  max-height: 52vh;
+  padding: 0 0 calc(env(safe-area-inset-bottom));
+  max-height: 70vh;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
+  transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  -webkit-overflow-scrolling: touch;
+}
+.control-sheet.collapsed {
+  max-height: 38vh;
 }
 .control-sheet::-webkit-scrollbar { width: 6px; }
 .control-sheet::-webkit-scrollbar-track { background: transparent; }
 .control-sheet::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 999px; }
 
+.sheet-handle-wrap {
+  padding: 10px 0 2px;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
 .sheet-handle {
   width: 36px; height: 5px;
   border-radius: 999px;
   background: rgba(255,255,255,0.25);
-  margin: 10px auto 6px;
+  transition: background 0.2s ease, width 0.2s ease;
 }
+.sheet-handle-wrap:active .sheet-handle {
+  background: rgba(255,255,255,0.45);
+  width: 44px;
+}
+.sheet-expand-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  font-weight: 600;
+  transition: opacity 0.25s ease;
+}
+.control-sheet.collapsed .sheet-expand-hint::after { content: "上滑展开更多"; }
+.control-sheet:not(.collapsed) .sheet-expand-hint::after { content: "下滑收起"; }
 
 /* Tabs */
 .sheet-tabs {
@@ -559,7 +578,7 @@ input[type="range"]::-moz-range-thumb {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(110px + env(safe-area-inset-bottom));
+  bottom: calc(60px + env(safe-area-inset-bottom));
   z-index: 120;
   transform: translateX(-50%) translateY(12px);
   max-width: min(88vw, 380px);
@@ -620,13 +639,15 @@ input[type="range"]::-moz-range-thumb {
     </div>
   </section>
 
-  <div class="fab-container">
-    <button class="fab fab-primary" id="pickBtn">导入素材</button>
-    <button class="fab fab-export" id="exportBtn" disabled>导出视频</button>
-  </div>
-
-  <section class="control-sheet" aria-label="控制区">
-    <div class="sheet-handle"></div>
+  <section class="control-sheet collapsed" aria-label="控制区">
+    <div class="sheet-handle-wrap" id="sheetHandleWrap">
+      <div class="sheet-handle"></div>
+      <span class="sheet-expand-hint"></span>
+    </div>
+    <div class="sheet-toolbar">
+      <button class="action-btn action-import" id="pickBtn">📷 导入素材</button>
+      <button class="action-btn action-export" id="exportBtn" disabled>🎬 导出视频</button>
+    </div>
     <div class="sheet-tabs" id="sheetTabs">
       <button class="sheet-tab active" data-tab="subject" type="button">主体</button>
       <button class="sheet-tab" data-tab="emotion" type="button">情绪</button>
@@ -2794,8 +2815,11 @@ input[type="range"]::-moz-range-thumb {
 
     exportBtn.disabled = false;
     refreshControls();
+    // Auto-expand sheet when media loaded
+    const sheet = document.querySelector('.control-sheet');
+    if (sheet) sheet.classList.remove('collapsed');
     setStatus(state.sourceType === "video" ? "已导入视频" : "已导入图片");
-    showToast("点击空白处可新增主体，拖动已有主体可微调位置。");
+    showToast("上下拖拽面板查看更多选项，点击空白处新增主体。");
   }
 
   function loadImage(url) {
@@ -2874,32 +2898,33 @@ input[type="range"]::-moz-range-thumb {
   async function exportVideo() {
     if (!state.source || state.exporting) return;
     if (!canvas.captureStream || !window.MediaRecorder) {
-      showToast("当前浏览器不支持直接导出，请换 Chrome 或新版 Safari。");
+      showToast("当前浏览器不支持导出，请换 Chrome 或新版 Safari。");
       return;
     }
-
-    const audioOk = await ensureAudio(true);
-    if (!audioOk) return;
 
     state.exporting = true;
     exportBtn.disabled = true;
     pickBtn.disabled = true;
-    setStatus("正在录制画布");
+    setStatus("正在导出视频…");
 
     const chunks = [];
-    videoStream = canvas.captureStream(30);
-    const audioTracks = audioDestination?.stream?.getAudioTracks?.() || [];
-    if (!audioTracks.length) {
-      showToast("当前浏览器无法导出声音轨。");
-      state.exporting = false;
-      exportBtn.disabled = false;
-      pickBtn.disabled = false;
-      return;
-    }
-    const combinedStream = new MediaStream([
-      ...videoStream.getVideoTracks(),
-      ...audioTracks
-    ]);
+    const videoStream = canvas.captureStream(30);
+
+    // Audio is optional — include if available, skip otherwise
+    let combinedStream = videoStream;
+    let hasAudio = false;
+    try {
+      await ensureAudio(false);
+      const audioTracks = audioDestination?.stream?.getAudioTracks?.() || [];
+      if (audioTracks.length > 0) {
+        combinedStream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...audioTracks
+        ]);
+        hasAudio = true;
+      }
+    } catch (e) { /* audio unavailable, export video only */ }
+
     const recorderInfo = createRecorder(combinedStream);
     if (!recorderInfo) {
       showToast("当前浏览器没有可用的视频编码器。");
@@ -2919,7 +2944,6 @@ input[type="range"]::-moz-range-thumb {
 
     let restoreTime = 0;
     let stopTimer;
-    let videoStream = null;
 
     try {
       if (state.sourceType === "video") {
@@ -2929,10 +2953,12 @@ input[type="range"]::-moz-range-thumb {
         sourceVideo.currentTime = 0;
         await waitForSeek(sourceVideo);
         recorder.start(250);
-        state.recordingAudio = true;
-        for (const subject of state.subjects) {
-          resetDialogueVoiceState(subject);
-          subject.dialogueStartedAt = performance.now();
+        if (hasAudio) {
+          state.recordingAudio = true;
+          for (const subject of state.subjects) {
+            resetDialogueVoiceState(subject);
+            subject.dialogueStartedAt = performance.now();
+          }
         }
         await sourceVideo.play();
         const stopAt = Math.min((sourceVideo.duration || EXPORT_MAX_SECONDS) * 1000, EXPORT_MAX_SECONDS * 1000);
@@ -2944,10 +2970,12 @@ input[type="range"]::-moz-range-thumb {
         }, { once: true });
       } else {
         recorder.start(250);
-        state.recordingAudio = true;
-        for (const subject of state.subjects) {
-          resetDialogueVoiceState(subject);
-          subject.dialogueStartedAt = performance.now();
+        if (hasAudio) {
+          state.recordingAudio = true;
+          for (const subject of state.subjects) {
+            resetDialogueVoiceState(subject);
+            subject.dialogueStartedAt = performance.now();
+          }
         }
         stopTimer = setTimeout(() => {
           if (recorder.state !== "inactive") recorder.stop();
@@ -2960,14 +2988,20 @@ input[type="range"]::-moz-range-thumb {
       if (state.captureUrl) URL.revokeObjectURL(state.captureUrl);
       state.captureUrl = URL.createObjectURL(blob);
       const ext = (mimeType || "").includes("mp4") ? "mp4" : "webm";
-      const a = document.createElement("a");
-      a.href = state.captureUrl;
-      a.download = `emotion-character-${Date.now()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const fileName = `emotion-character-${Date.now()}.${ext}`;
+      try {
+        const a = document.createElement("a");
+        a.href = state.captureUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (e) {
+        window.open(state.captureUrl, "_blank");
+      }
+      const audioNote = hasAudio ? "" : "（无声）";
       setStatus("导出完成");
-      showToast(`已导出 ${ext.toUpperCase()} 视频。`);
+      showToast(`✅ 已导出 ${ext.toUpperCase()} 视频${audioNote}，请检查下载列表。`);
     } catch (err) {
       console.error(err);
       showToast("导出失败，换一个更短的视频试试。");
@@ -2979,9 +3013,7 @@ input[type="range"]::-moz-range-thumb {
         sourceVideo.currentTime = Math.min(restoreTime, sourceVideo.duration || restoreTime);
         sourceVideo.play().catch(() => {});
       }
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-      }
+      videoStream.getTracks().forEach(track => track.stop());
       state.exporting = false;
       exportBtn.disabled = false;
       pickBtn.disabled = false;
@@ -3131,6 +3163,63 @@ input[type="range"]::-moz-range-thumb {
   refreshControls();
   requestAnimationFrame(render);
 
+  // iOS-style Sheet Drag to Expand/Collapse
+  const controlSheet = document.querySelector('.control-sheet');
+  const sheetHandleWrap = document.getElementById('sheetHandleWrap');
+  let sheetDragActive = false;
+  let sheetDragStartY = 0;
+  let sheetDragMoved = false;
+
+  function toggleSheet() {
+    if (!controlSheet) return;
+    controlSheet.classList.toggle('collapsed');
+    if (!controlSheet.classList.contains('collapsed')) {
+      controlSheet.scrollTop = 0;
+    }
+  }
+
+  if (sheetHandleWrap && controlSheet) {
+    sheetHandleWrap.addEventListener('pointerdown', (e) => {
+      sheetDragActive = true;
+      sheetDragMoved = false;
+      sheetDragStartY = e.clientY;
+      sheetHandleWrap.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    sheetHandleWrap.addEventListener('pointermove', (e) => {
+      if (!sheetDragActive) return;
+      const dy = sheetDragStartY - e.clientY; // + = dragging up
+      if (Math.abs(dy) > 30) {
+        sheetDragMoved = true;
+        const isCollapsed = controlSheet.classList.contains('collapsed');
+        if (dy > 30 && isCollapsed) {
+          controlSheet.classList.remove('collapsed');
+          controlSheet.scrollTop = 0;
+          sheetDragActive = false;
+        } else if (dy < -30 && !isCollapsed) {
+          controlSheet.classList.add('collapsed');
+          sheetDragActive = false;
+        }
+      }
+    });
+
+    sheetHandleWrap.addEventListener('pointerup', () => {
+      sheetDragActive = false;
+    });
+
+    sheetHandleWrap.addEventListener('pointercancel', () => {
+      sheetDragActive = false;
+    });
+
+    // Tap to toggle
+    sheetHandleWrap.addEventListener('click', (e) => {
+      if (!sheetDragMoved) {
+        toggleSheet();
+      }
+    });
+  }
+
   // iOS-style Tab Switching
   const sheetTabs = document.querySelectorAll('.sheet-tab');
   const sheetPanels = document.querySelectorAll('.sheet-panel');
@@ -3139,6 +3228,10 @@ input[type="range"]::-moz-range-thumb {
       const target = tab.dataset.tab;
       sheetTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
       sheetPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
+      // Auto-expand sheet when switching tabs
+      if (controlSheet && controlSheet.classList.contains('collapsed')) {
+        controlSheet.classList.remove('collapsed');
+      }
     });
   });
 
