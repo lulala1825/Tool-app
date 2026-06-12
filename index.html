@@ -47,8 +47,9 @@ button { border: 0; color: inherit; background: none; }
 .app {
   min-height: 100dvh;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) var(--sheet-h, 30vh);
   background: var(--bg);
+  transition: grid-template-rows 0.05s linear;
 }
 
 /* iOS Navigation Bar */
@@ -205,17 +206,12 @@ canvas { display: block; width: 100%; height: 100%; }
   border-top: 0.5px solid var(--border);
   border-radius: 24px 24px 0 0;
   padding: 0 0 calc(env(safe-area-inset-bottom));
-  max-height: 70vh;
-  min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
-  transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   -webkit-overflow-scrolling: touch;
-}
-.control-sheet.collapsed {
-  max-height: 38vh;
 }
 .control-sheet::-webkit-scrollbar { width: 6px; }
 .control-sheet::-webkit-scrollbar-track { background: transparent; }
@@ -246,10 +242,7 @@ canvas { display: block; width: 100%; height: 100%; }
   font-size: 11px;
   color: rgba(255,255,255,0.3);
   font-weight: 600;
-  transition: opacity 0.25s ease;
 }
-.control-sheet.collapsed .sheet-expand-hint::after { content: "上滑展开更多"; }
-.control-sheet:not(.collapsed) .sheet-expand-hint::after { content: "下滑收起"; }
 
 /* Tabs */
 .sheet-tabs {
@@ -639,7 +632,7 @@ input[type="range"]::-moz-range-thumb {
     </div>
   </section>
 
-  <section class="control-sheet collapsed" aria-label="控制区">
+  <section class="control-sheet" aria-label="控制区">
     <div class="sheet-handle-wrap" id="sheetHandleWrap">
       <div class="sheet-handle"></div>
       <span class="sheet-expand-hint"></span>
@@ -2816,10 +2809,9 @@ input[type="range"]::-moz-range-thumb {
     exportBtn.disabled = false;
     refreshControls();
     // Auto-expand sheet when media loaded
-    const sheet = document.querySelector('.control-sheet');
-    if (sheet) sheet.classList.remove('collapsed');
+    if (typeof setSheetHeight === 'function') setSheetHeight(SHEET_LARGE, true);
     setStatus(state.sourceType === "video" ? "已导入视频" : "已导入图片");
-    showToast("上下拖拽面板查看更多选项，点击空白处新增主体。");
+    showToast("上下拖拽面板横条可展开/收起，点击空白处新增主体。");
   }
 
   function loadImage(url) {
@@ -3164,60 +3156,93 @@ input[type="range"]::-moz-range-thumb {
   requestAnimationFrame(render);
 
   // iOS-style Sheet Drag to Expand/Collapse
+  const appEl = document.querySelector('.app');
   const controlSheet = document.querySelector('.control-sheet');
   const sheetHandleWrap = document.getElementById('sheetHandleWrap');
+  const sheetExpandHint = document.querySelector('.sheet-expand-hint');
+  const SHEET_SMALL = 30;  // vh — collapsed
+  const SHEET_LARGE = 58;  // vh — expanded
+  const SHEET_MIN = 22;
+  const SHEET_MAX = 68;
+  let sheetVh = SHEET_SMALL;
   let sheetDragActive = false;
   let sheetDragStartY = 0;
+  let sheetDragStartVh = 0;
   let sheetDragMoved = false;
 
-  function toggleSheet() {
-    if (!controlSheet) return;
-    controlSheet.classList.toggle('collapsed');
-    if (!controlSheet.classList.contains('collapsed')) {
+  function setSheetHeight(vh, animate = false) {
+    sheetVh = Math.max(SHEET_MIN, Math.min(SHEET_MAX, vh));
+    if (appEl) {
+      if (!animate) appEl.style.transition = 'none';
+      appEl.style.setProperty('--sheet-h', `${sheetVh}vh`);
+      if (!animate) {
+        requestAnimationFrame(() => {
+          appEl.style.transition = '';
+        });
+      }
+    }
+    // Update hint text
+    if (sheetExpandHint) {
+      sheetExpandHint.textContent = sheetVh > SHEET_LARGE - 8 ? '下滑收起' : '上滑展开更多';
+    }
+  }
+
+  function snapSheet() {
+    const midpoint = (SHEET_SMALL + SHEET_LARGE) / 2;
+    const target = sheetVh > midpoint ? SHEET_LARGE : SHEET_SMALL;
+    // Animate snap
+    if (appEl) appEl.style.transition = 'grid-template-rows 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+    setSheetHeight(target);
+    // Clean up transition after it completes
+    setTimeout(() => {
+      if (appEl) appEl.style.transition = '';
+    }, 350);
+    if (target === SHEET_LARGE && controlSheet) {
       controlSheet.scrollTop = 0;
     }
   }
 
-  if (sheetHandleWrap && controlSheet) {
+  if (sheetHandleWrap) {
     sheetHandleWrap.addEventListener('pointerdown', (e) => {
       sheetDragActive = true;
       sheetDragMoved = false;
       sheetDragStartY = e.clientY;
+      sheetDragStartVh = sheetVh;
       sheetHandleWrap.setPointerCapture(e.pointerId);
+      if (appEl) appEl.style.transition = 'none';
       e.preventDefault();
     });
 
     sheetHandleWrap.addEventListener('pointermove', (e) => {
       if (!sheetDragActive) return;
       const dy = sheetDragStartY - e.clientY; // + = dragging up
-      if (Math.abs(dy) > 30) {
-        sheetDragMoved = true;
-        const isCollapsed = controlSheet.classList.contains('collapsed');
-        if (dy > 30 && isCollapsed) {
-          controlSheet.classList.remove('collapsed');
-          controlSheet.scrollTop = 0;
-          sheetDragActive = false;
-        } else if (dy < -30 && !isCollapsed) {
-          controlSheet.classList.add('collapsed');
-          sheetDragActive = false;
-        }
-      }
+      const winH = window.innerHeight;
+      const dvh = (dy / winH) * 100; // convert px → vh
+      const newVh = sheetDragStartVh + dvh;
+      if (Math.abs(dy) > 4) sheetDragMoved = true;
+      setSheetHeight(newVh);
     });
 
-    sheetHandleWrap.addEventListener('pointerup', () => {
+    const endDrag = () => {
+      if (!sheetDragActive) return;
       sheetDragActive = false;
-    });
+      snapSheet();
+    };
 
-    sheetHandleWrap.addEventListener('pointercancel', () => {
-      sheetDragActive = false;
-    });
+    sheetHandleWrap.addEventListener('pointerup', endDrag);
+    sheetHandleWrap.addEventListener('pointercancel', endDrag);
 
     // Tap to toggle
     sheetHandleWrap.addEventListener('click', (e) => {
-      if (!sheetDragMoved) {
-        toggleSheet();
-      }
+      if (sheetDragMoved) return;
+      const target = sheetVh > (SHEET_SMALL + SHEET_LARGE) / 2 ? SHEET_SMALL : SHEET_LARGE;
+      setSheetHeight(target, true);
     });
+  }
+
+  // Initialize hint
+  if (sheetExpandHint) {
+    sheetExpandHint.textContent = '上滑展开更多';
   }
 
   // iOS-style Tab Switching
@@ -3228,9 +3253,9 @@ input[type="range"]::-moz-range-thumb {
       const target = tab.dataset.tab;
       sheetTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
       sheetPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
-      // Auto-expand sheet when switching tabs
-      if (controlSheet && controlSheet.classList.contains('collapsed')) {
-        controlSheet.classList.remove('collapsed');
+      // Auto-expand when switching tabs
+      if (sheetVh < SHEET_LARGE - 5) {
+        setSheetHeight(SHEET_LARGE, true);
       }
     });
   });
