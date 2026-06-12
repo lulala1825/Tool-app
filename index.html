@@ -1,0 +1,3152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<title>情绪拟人短视频</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: rgba(28,28,30,0.82);
+  --surface-solid: #1c1c1e;
+  --elevated: #2c2c2e;
+  --border: rgba(255,255,255,0.1);
+  --text: #ffffff;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-tertiary: rgba(255,255,255,0.3);
+  --primary: #0a84ff;
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+  --ink: #19191c;
+  --mint: #38d5a3;
+  --coral: #ff6b6b;
+  --sun: #ffd166;
+  --sky: #6ec8ff;
+  --violet: #b89cff;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button, input, select, textarea { font: inherit; }
+button { border: 0; color: inherit; background: none; }
+
+.app {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: var(--bg);
+}
+
+/* iOS Navigation Bar */
+.nav-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding-top: env(safe-area-inset-top);
+  height: calc(44px + env(safe-area-inset-top));
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 24px; height: 24px;
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 38% 36%, #fff 0 13%, transparent 14%),
+    radial-gradient(circle at 64% 36%, #fff 0 13%, transparent 14%),
+    linear-gradient(135deg, var(--sun), var(--coral) 48%, var(--mint));
+  box-shadow: inset 0 -8px 10px rgba(0,0,0,0.16);
+}
+.status-pill {
+  max-width: 180px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Stage */
+.stage-wrap {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(max(62px, env(safe-area-inset-top) + 44px)) 16px calc(12px + env(safe-area-inset-bottom));
+}
+.stage {
+  position: relative;
+  width: min(100vw - 32px, calc((100dvh - 280px) * 9 / 16), 400px);
+  aspect-ratio: 9 / 16;
+  max-height: calc(100dvh - 270px);
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.06), transparent),
+    #1c1c1e;
+  box-shadow:
+    0 24px 60px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.08);
+  touch-action: none;
+}
+canvas { display: block; width: 100%; height: 100%; }
+
+.empty-state {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  padding: 26px; text-align: center;
+  color: rgba(255,255,255,0.78);
+  pointer-events: none;
+}
+.empty-state.hidden { display: none; }
+.empty-card { display: grid; gap: 14px; justify-items: center; }
+.empty-face {
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffd166, #ff8a5b);
+  position: relative;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.25);
+}
+.empty-face::before, .empty-face::after {
+  content: ""; position: absolute; top: 30px;
+  width: 16px; height: 20px; border-radius: 50%; background: #16161a;
+}
+.empty-face::before { left: 26px; }
+.empty-face::after { right: 26px; }
+.empty-mouth {
+  position: absolute; left: 29px; bottom: 24px;
+  width: 30px; height: 14px;
+  border: 4px solid #16161a; border-top: 0;
+  border-radius: 0 0 30px 30px;
+}
+.empty-title { font-size: 17px; font-weight: 800; }
+.empty-sub {
+  max-width: 260px;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px; line-height: 1.6;
+}
+
+/* Floating Action Buttons */
+.fab-container {
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(30,30,33,0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.fab {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  border: none;
+}
+.fab:active { transform: scale(0.96); }
+.fab-primary {
+  background: linear-gradient(135deg, #ff6b6b, #ffd166);
+  color: #17130f;
+}
+.fab-export {
+  background: linear-gradient(135deg, #38d5a3, #6ec8ff);
+  color: #06120f;
+}
+.fab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Bottom Sheet Control Panel */
+.control-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 0.5px solid var(--border);
+  border-radius: 24px 24px 0 0;
+  padding: 0 0 calc(86px + env(safe-area-inset-bottom));
+  max-height: 52vh;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+.control-sheet::-webkit-scrollbar { width: 6px; }
+.control-sheet::-webkit-scrollbar-track { background: transparent; }
+.control-sheet::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 999px; }
+
+.sheet-handle {
+  width: 36px; height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.25);
+  margin: 10px auto 6px;
+}
+
+/* Tabs */
+.sheet-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 16px 4px;
+  scrollbar-width: none;
+}
+.sheet-tabs::-webkit-scrollbar { display: none; }
+.sheet-tab {
+  flex-shrink: 0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: var(--elevated);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.sheet-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Sheet Panels */
+.sheet-panels { position: relative; }
+.sheet-panel {
+  display: none;
+  padding: 12px 16px 20px;
+  gap: 10px;
+  flex-direction: column;
+  animation: fadeIn 0.25s ease;
+}
+.sheet-panel.active { display: flex; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Panel Title */
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 2px;
+}
+.panel-actions { display: flex; align-items: center; gap: 8px; }
+.panel-subtitle {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* Rows & Chips */
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 0;
+  flex-shrink: 0;
+}
+.row.wrap { flex-wrap: wrap; }
+.row.scroll {
+  overflow-x: auto;
+  min-height: 46px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.row.scroll::-webkit-scrollbar { display: none; }
+
+.btn, .chip, .icon-btn {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--elevated);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.btn:active, .chip:active, .icon-btn:active { transform: scale(0.96); }
+
+.btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.btn.good {
+  background: linear-gradient(135deg, #38d5a3, #2eb398);
+  color: #fff;
+  border-color: transparent;
+}
+.btn.danger {
+  background: linear-gradient(135deg, #ff453a, #ff6b6b);
+  color: #fff;
+  border-color: transparent;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chip.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.swatch {
+  width: 12px; height: 12px;
+  border-radius: 4px;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.16);
+}
+
+.icon-btn {
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.subject-chip {
+  position: relative;
+  min-width: 84px;
+  padding: 0 14px;
+  justify-content: space-between;
+}
+.subject-chip .badge {
+  min-width: 20px; height: 20px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(255,255,255,0.14);
+  font-size: 11px;
+}
+.subject-chip.active .badge { background: rgba(0,0,0,0.12); }
+
+/* Emotion Grid */
+.emotion-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.emotion-grid .chip {
+  flex-direction: column;
+  padding: 10px 4px;
+  min-height: 64px;
+  gap: 4px;
+  border-radius: 12px;
+}
+.emotion-grid .swatch {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+}
+
+/* Field & Inputs */
+.field {
+  flex: 1;
+  min-height: 76px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  background: var(--elevated);
+  color: var(--text);
+  padding: 10px 12px;
+  resize: none;
+  outline: none;
+  font-size: 15px;
+}
+.field:focus {
+  border-color: var(--primary);
+  background: rgba(255,255,255,0.08);
+}
+
+/* iOS Toggle Switch */
+.ios-toggle, .ios-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.ios-toggle input, .ios-list-item input[type="checkbox"] {
+  display: none;
+}
+.toggle-track {
+  width: 50px; height: 30px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  position: relative;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+}
+.toggle-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: transform 0.25s cubic-bezier(0.32,0.72,0,1);
+}
+.ios-toggle input:checked + .toggle-track,
+.ios-list-item input:checked + .toggle-track {
+  background: var(--primary);
+}
+.ios-toggle input:checked + .toggle-track .toggle-knob,
+.ios-list-item input:checked + .toggle-track .toggle-knob {
+  transform: translateX(20px);
+}
+.toggle-label {
+  font-size: 15px;
+  color: var(--text);
+}
+.ios-list-item > span:first-child {
+  font-size: 15px;
+  color: var(--text);
+  flex: 1;
+}
+
+/* iOS Slider Group */
+.ios-slider-group {
+  display: grid;
+  gap: 16px;
+  padding: 8px 0;
+}
+.ios-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ios-slider-label {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.15);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+/* Line Emotion Panel */
+.line-emotion-panel { display: grid; gap: 8px; }
+.line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+.line-meta { min-width: 0; display: grid; gap: 3px; }
+.line-index {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+.line-preview {
+  min-width: 0;
+  color: rgba(255,255,255,0.82);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line-select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: var(--elevated);
+  color: var(--text);
+  padding: 0 10px;
+  outline: none;
+  font-size: 13px;
+}
+.line-select option { background: #fff; color: #171717; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+  z-index: 120;
+  transform: translateX(-50%) translateY(12px);
+  max-width: min(88vw, 380px);
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(60,60,65,0.92);
+  border: 0.5px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.92);
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Utility */
+#fileInput { display: none; }
+#sourceVideo { display: none; }
+.panel-resizer { display: none !important; }
+
+/* Desktop fallback - keep centered mobile look */
+@media (min-width: 820px) {
+  .app {
+    max-width: 414px;
+    margin: 0 auto;
+    position: relative;
+    box-shadow: 0 0 60px rgba(0,0,0,0.6);
+  }
+  body { background: #0a0a0c; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="nav-bar">
+    <div class="nav-content">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>情绪拟人</span></div>
+      <div class="status-pill" id="statusText">导入素材开始创作</div>
+    </div>
+  </div>
+
+  <section class="stage-wrap" aria-label="预览区">
+    <div class="stage" id="stage">
+      <canvas id="canvas" width="720" height="1280"></canvas>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-card">
+          <div class="empty-face"><span class="empty-mouth"></span></div>
+          <div class="empty-title">让静物有情绪</div>
+          <div class="empty-sub">导入照片或短视频，点一下主角，就能给它加表情、手臂和气泡。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="fab-container">
+    <button class="fab fab-primary" id="pickBtn">导入素材</button>
+    <button class="fab fab-export" id="exportBtn" disabled>导出视频</button>
+  </div>
+
+  <section class="control-sheet" aria-label="控制区">
+    <div class="sheet-handle"></div>
+    <div class="sheet-tabs" id="sheetTabs">
+      <button class="sheet-tab active" data-tab="subject" type="button">主体</button>
+      <button class="sheet-tab" data-tab="emotion" type="button">情绪</button>
+      <button class="sheet-tab" data-tab="body" type="button">肢体</button>
+      <button class="sheet-tab" data-tab="text" type="button">文字</button>
+      <button class="sheet-tab" data-tab="voice" type="button">声音</button>
+    </div>
+    <div class="sheet-panels">
+      <div class="sheet-panel active" data-panel="subject">
+        <div class="panel-title"><span>主体列表</span></div>
+        <div class="row scroll" id="subjectList"></div>
+        <div class="row">
+          <button class="btn good" id="addSubjectBtn">＋ 新增</button>
+          <button class="btn" id="duplicateSubjectBtn" disabled>复制</button>
+          <button class="btn danger" id="deleteSubjectBtn" disabled>删除</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="detectBtn" disabled>重新识别</button>
+          <button class="btn" id="centerBtn" disabled>居中</button>
+        </div>
+        <label class="ios-toggle">
+          <input id="followToggle" type="checkbox" checked>
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">智能追踪画面主体</span>
+        </label>
+      </div>
+      <div class="sheet-panel" data-panel="emotion">
+        <div class="panel-title"><span>情绪</span></div>
+        <div class="emotion-grid" id="emotionList"></div>
+        <div class="panel-title" style="margin-top:12px"><span>表情套装</span></div>
+        <div class="row scroll" id="faceStyleList"></div>
+        <div class="panel-subtitle">逐句情绪</div>
+        <div class="line-emotion-panel" id="lineEmotionPanel"></div>
+      </div>
+      <div class="sheet-panel" data-panel="body">
+        <div class="panel-title"><span>腿部动作</span></div>
+        <div class="row scroll" id="legList"></div>
+        <div class="ios-slider-group">
+          <div class="ios-slider-row"><span class="ios-slider-label">身体大小</span><input id="bodySlider" type="range" min="54" max="220" value="118"></div>
+          <div class="ios-slider-row"><span class="ios-slider-label">脸部大小</span><input id="faceSlider" type="range" min="60" max="180" value="100"></div>
+        </div>
+        <div class="ios-switches">
+          <label class="ios-list-item"><span>显示身体</span><input id="bodyToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+          <label class="ios-list-item"><span>显示脸部</span><input id="faceToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+          <label class="ios-list-item"><span>显示腿部</span><input id="legToggle" type="checkbox"><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+        </div>
+      </div>
+      <div class="sheet-panel" data-panel="text">
+        <div class="panel-title"><span>气泡文字</span></div>
+        <div class="row">
+          <textarea class="field" id="captionInput" rows="3" placeholder="气泡文字，每行一句"></textarea>
+          <button class="icon-btn" id="shuffleBtn" title="换一句">↻</button>
+        </div>
+        <div class="row">
+          <textarea class="field" id="personaInput" rows="2" placeholder="输入这个小人的想法、特点、口癖"></textarea>
+          <button class="icon-btn" id="autoGenBtn" title="自动生成">✦</button>
+        </div>
+        <div class="panel-title" style="margin-top:12px"><span>气泡样式</span></div>
+        <div class="row scroll" id="bubbleList"></div>
+        <div class="ios-slider-group">
+          <div class="ios-slider-row"><span class="ios-slider-label">文字大小</span><input id="textSlider" type="range" min="18" max="42" value="28"></div>
+          <div class="ios-slider-row"><span class="ios-slider-label">台词速度</span><input id="speedSlider" type="range" min="0.8" max="4.5" step="0.1" value="1.8"></div>
+        </div>
+        <label class="ios-list-item"><span>显示文字气泡</span><input id="textToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+      </div>
+      <div class="sheet-panel" data-panel="voice">
+        <div class="panel-title"><span>说话音色</span></div>
+        <div class="row scroll" id="voiceList"></div>
+        <div class="ios-slider-group">
+          <div class="ios-slider-row"><span class="ios-slider-label">音量</span><input id="voiceVolumeSlider" type="range" min="0" max="100" value="58"></div>
+        </div>
+        <div class="row">
+          <label class="ios-list-item" style="flex:1"><span>开启声音</span><input id="voiceToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+          <button class="icon-btn" id="previewVoiceBtn" title="试听声音">♪</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <video id="sourceVideo" playsinline muted loop></video>
+  <input id="fileInput" type="file" accept="image/*,video/*" style="display:none">
+  <div class="toast" id="toast"></div>
+  <div class="panel-resizer" id="panelResizer" aria-hidden="true" style="display:none"></div>
+</main>
+
+<script>
+(() => {
+  const CANVAS_W = 720;
+  const CANVAS_H = 1280;
+  const DETECT_W = 180;
+  const DETECT_H = 320;
+  const EXPORT_IMAGE_SECONDS = 5;
+  const EXPORT_MAX_SECONDS = 18;
+
+  const LEG_MODES = {
+    stand: { label: "站立" },
+    walk: { label: "走路" },
+    run: { label: "跑步" },
+    jump: { label: "跳跃" }
+  };
+
+  const BUBBLE_STYLES = {
+    speech: { label: "对话" },
+    cloud: { label: "云朵" },
+    sharp: { label: "炸裂" },
+    note: { label: "便签" },
+    pill: { label: "胶囊" }
+  };
+
+  const FACE_STYLES = {
+    classic: { label: "基础" },
+    kawaii: { label: "软萌" },
+    sticker: { label: "贴纸" },
+    line: { label: "线条" },
+    cool: { label: "酷酷" },
+    glasses: { label: "配饰" },
+    chibi: { label: "团子" },
+    dramatic: { label: "夸张" }
+  };
+
+  const VOICE_TYPES = {
+    minion: {
+      label: "小黄人感",
+      base: 620,
+      spread: 240,
+      wave: "sawtooth",
+      syllables: [1, 1.26, 1.52, 1.18, 1.72, 1.34],
+      formant: 1780,
+      noise: 0.028,
+      chirp: 0.26
+    },
+    sponge: {
+      label: "海绵宝宝感",
+      base: 520,
+      spread: 210,
+      wave: "square",
+      syllables: [1, 1.42, 1.18, 1.58, 1.26, 1.75],
+      formant: 2320,
+      noise: 0.022,
+      chirp: 0.34
+    },
+    patrick: {
+      label: "派大星感",
+      base: 190,
+      spread: 85,
+      wave: "triangle",
+      syllables: [1, 0.84, 0.98, 0.72, 1.06],
+      formant: 690,
+      noise: 0.06,
+      chirp: -0.12
+    }
+  };
+
+  const EMOTION_VOICE_MODS = {
+    happy: { pitch: 1.1, rate: 1.08, gain: 1, jitter: 0.03, chirp: 0.12 },
+    surprise: { pitch: 1.24, rate: 1.2, gain: 1.06, jitter: 0.06, chirp: 0.32 },
+    angry: { pitch: 0.95, rate: 1.28, gain: 1.12, jitter: 0.14, chirp: -0.1 },
+    rage: { pitch: 0.86, rate: 1.55, gain: 1.18, jitter: 0.22, chirp: -0.2 },
+    sad: { pitch: 0.78, rate: 0.78, gain: 0.78, jitter: 0.05, chirp: -0.18 },
+    shy: { pitch: 1.06, rate: 0.9, gain: 0.72, jitter: 0.04, chirp: 0.08 },
+    smug: { pitch: 0.98, rate: 0.96, gain: 0.9, jitter: 0.03, chirp: -0.05 },
+    sleepy: { pitch: 0.68, rate: 0.64, gain: 0.62, jitter: 0.03, chirp: -0.16 },
+    excited: { pitch: 1.26, rate: 1.52, gain: 1.12, jitter: 0.08, chirp: 0.22 },
+    confused: { pitch: 0.96, rate: 0.86, gain: 0.86, jitter: 0.12, chirp: 0.02 }
+  };
+
+  const emotions = {
+    happy: {
+      label: "开心",
+      swatch: "#ffd166",
+      phrases: ["今天的我很有精神", "嘿嘿，被我可爱到了吧", "这个世界突然变甜了"],
+      mouth: "smile",
+      eye: "round",
+      brow: "soft",
+      arm: "wave",
+      bubble: "#fff4c8"
+    },
+    surprise: {
+      label: "惊讶",
+      swatch: "#6ec8ff",
+      phrases: ["啊？这也能发生", "我只是路过一下", "等等，我还没准备好"],
+      mouth: "o",
+      eye: "wide",
+      brow: "up",
+      arm: "up",
+      bubble: "#dff4ff"
+    },
+    angry: {
+      label: "生气",
+      swatch: "#ff6b6b",
+      phrases: ["你最好重新组织语言", "我真的有点火大", "别碰我，我有脾气"],
+      mouth: "grit",
+      eye: "angry",
+      brow: "angry",
+      arm: "point",
+      bubble: "#ffe0dd"
+    },
+    rage: {
+      label: "暴躁",
+      swatch: "#ff9f1c",
+      phrases: ["我现在就要炸了", "退退退，别惹我", "谁把我放这儿的"],
+      mouth: "shout",
+      eye: "tiny",
+      brow: "rage",
+      arm: "shake",
+      bubble: "#ffe7bd"
+    },
+    sad: {
+      label: "委屈",
+      swatch: "#b89cff",
+      phrases: ["我也不是故意的", "今天的风有点冷", "能不能抱抱我一下"],
+      mouth: "sad",
+      eye: "teary",
+      brow: "sad",
+      arm: "hug",
+      bubble: "#eee7ff"
+    },
+    shy: {
+      label: "害羞",
+      swatch: "#ff9bc9",
+      phrases: ["我先躲一下", "别看我呀", "今天有点不好意思"],
+      mouth: "smile",
+      eye: "wink",
+      brow: "soft",
+      arm: "hug",
+      bubble: "#ffe6f2"
+    },
+    smug: {
+      label: "得意",
+      swatch: "#a7f0ff",
+      phrases: ["这波我赢了", "就这？", "我很懂"],
+      mouth: "smirk",
+      eye: "half",
+      brow: "lift",
+      arm: "point",
+      bubble: "#e5fbff"
+    },
+    sleepy: {
+      label: "困困",
+      swatch: "#9bc6ff",
+      phrases: ["让我再睡五分钟", "眼皮好重", "今天电量不太够"],
+      mouth: "yawn",
+      eye: "sleepy",
+      brow: "flat",
+      arm: "hug",
+      bubble: "#e5efff"
+    },
+    excited: {
+      label: "兴奋",
+      swatch: "#7dffcf",
+      phrases: ["冲呀", "这太好玩了", "我已经等不及了"],
+      mouth: "open",
+      eye: "spark",
+      brow: "up",
+      arm: "spread",
+      bubble: "#e8fff7"
+    },
+    confused: {
+      label: "疑惑",
+      swatch: "#ffd29b",
+      phrases: ["我是不是看错了", "这题怎么解", "等一下，哪里不对"],
+      mouth: "question",
+      eye: "cross",
+      brow: "tilt",
+      arm: "spread",
+      bubble: "#fff3e3"
+    }
+  };
+
+  const app = document.querySelector(".app");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const stage = document.getElementById("stage");
+  const panelResizer = document.getElementById("panelResizer");
+  const emptyState = document.getElementById("emptyState");
+  const pickBtn = document.getElementById("pickBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const fileInput = document.getElementById("fileInput");
+  const subjectList = document.getElementById("subjectList");
+  const emotionList = document.getElementById("emotionList");
+  const faceStyleList = document.getElementById("faceStyleList");
+  const legList = document.getElementById("legList");
+  const bubbleList = document.getElementById("bubbleList");
+  const voiceList = document.getElementById("voiceList");
+  const captionInput = document.getElementById("captionInput");
+  const lineEmotionPanel = document.getElementById("lineEmotionPanel");
+  const personaInput = document.getElementById("personaInput");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+  const autoGenBtn = document.getElementById("autoGenBtn");
+  const bodySlider = document.getElementById("bodySlider");
+  const faceSlider = document.getElementById("faceSlider");
+  const textSlider = document.getElementById("textSlider");
+  const speedSlider = document.getElementById("speedSlider");
+  const voiceVolumeSlider = document.getElementById("voiceVolumeSlider");
+  const voiceToggle = document.getElementById("voiceToggle");
+  const previewVoiceBtn = document.getElementById("previewVoiceBtn");
+  const bodyToggle = document.getElementById("bodyToggle");
+  const faceToggle = document.getElementById("faceToggle");
+  const legToggle = document.getElementById("legToggle");
+  const textToggle = document.getElementById("textToggle");
+  const detectBtn = document.getElementById("detectBtn");
+  const centerBtn = document.getElementById("centerBtn");
+  const addSubjectBtn = document.getElementById("addSubjectBtn");
+  const duplicateSubjectBtn = document.getElementById("duplicateSubjectBtn");
+  const deleteSubjectBtn = document.getElementById("deleteSubjectBtn");
+  const followToggle = document.getElementById("followToggle");
+  const sourceVideo = document.getElementById("sourceVideo");
+  const statusText = document.getElementById("statusText");
+  const toast = document.getElementById("toast");
+
+  const detectCanvas = document.createElement("canvas");
+  detectCanvas.width = DETECT_W;
+  detectCanvas.height = DETECT_H;
+  const detectCtx = detectCanvas.getContext("2d", { willReadFrequently: true });
+
+  const state = {
+    source: null,
+    sourceType: "",
+    objectUrl: "",
+    captureUrl: "",
+    subjects: [],
+    selectedId: null,
+    draggingId: null,
+    dragOffsetX: 0,
+    dragOffsetY: 0,
+    exporting: false,
+    recordingAudio: false,
+    lastTrackAt: 0,
+    startedAt: performance.now()
+  };
+
+  function setStatus(text) {
+    statusText.textContent = text;
+  }
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  function makeId() {
+    return (crypto.randomUUID && crypto.randomUUID()) || `s_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  const PANEL_WIDTH_KEY = "emotion-character-panel-width";
+  const PANEL_MIN_W = 430;
+  const PANEL_MAX_W = 760;
+  let panelResizeActive = false;
+  let audioCtx = null;
+  let audioMaster = null;
+  let audioExportGain = null;
+  let audioDestination = null;
+  let audioAvailable = false;
+
+  function panelMaxWidth() {
+    return Math.max(PANEL_MIN_W, Math.min(PANEL_MAX_W, window.innerWidth - 360));
+  }
+
+  function currentPanelWidth() {
+    const raw = app ? getComputedStyle(app).getPropertyValue("--panel-w") : "";
+    return parseFloat(raw) || 520;
+  }
+
+  function savedPanelWidth() {
+    try {
+      const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+      return Number.isFinite(saved) && saved > 0 ? saved : 520;
+    } catch {
+      return 520;
+    }
+  }
+
+  function applyPanelWidth(width, persist = true) {
+    if (!app || window.innerWidth < 820) return;
+    const next = clamp(Math.round(width), PANEL_MIN_W, panelMaxWidth());
+    app.style.setProperty("--panel-w", `${next}px`);
+    if (persist) {
+      try {
+        localStorage.setItem(PANEL_WIDTH_KEY, String(next));
+      } catch {}
+    }
+  }
+
+  function initPanelResize() {
+    applyPanelWidth(savedPanelWidth(), false);
+    panelResizer.addEventListener("pointerdown", event => {
+      if (window.innerWidth < 820) return;
+      event.preventDefault();
+      panelResizeActive = true;
+      document.body.classList.add("is-resizing-panel");
+      panelResizer.setPointerCapture?.(event.pointerId);
+    });
+    window.addEventListener("pointermove", event => {
+      if (!panelResizeActive) return;
+      applyPanelWidth(window.innerWidth - event.clientX);
+    });
+    const stopResize = () => {
+      if (!panelResizeActive) return;
+      panelResizeActive = false;
+      document.body.classList.remove("is-resizing-panel");
+    };
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("pointercancel", stopResize);
+    window.addEventListener("resize", () => applyPanelWidth(currentPanelWidth(), false));
+  }
+
+  function resetDialogueVoiceState(subject) {
+    if (!subject) return;
+    subject.lastSpokenLineIndex = null;
+    subject.lastSpokenAt = 0;
+  }
+
+  async function ensureAudio(showError = false) {
+    if (!window.AudioContext && !window.webkitAudioContext) {
+      if (showError) showToast("当前浏览器不支持生成声音。");
+      return false;
+    }
+
+    try {
+      if (!audioCtx) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioCtor();
+        audioMaster = audioCtx.createGain();
+        audioMaster.gain.value = 0.82;
+        audioExportGain = audioCtx.createGain();
+        audioExportGain.gain.value = 1;
+        audioDestination = audioCtx.createMediaStreamDestination();
+        audioMaster.connect(audioCtx.destination);
+        audioMaster.connect(audioExportGain);
+        audioExportGain.connect(audioDestination);
+      }
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
+      audioAvailable = audioCtx.state === "running" && Boolean(audioDestination?.stream?.getAudioTracks().length);
+      return audioAvailable;
+    } catch (err) {
+      console.error(err);
+      if (showError) showToast("声音初始化失败，当前浏览器可能限制了音频。");
+      return false;
+    }
+  }
+
+  function voiceParam(value, time, next) {
+    if (!value) return;
+    value.cancelScheduledValues(time);
+    value.setValueAtTime(value.value, time);
+    value.linearRampToValueAtTime(next, time + 0.012);
+  }
+
+  function scheduleVoiceSyllable(voice, mod, start, duration, frequency, volume, seed) {
+    const carrier = audioCtx.createOscillator();
+    const carrierGain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    const tremolo = audioCtx.createOscillator();
+    const tremoloGain = audioCtx.createGain();
+    const tremoloDepth = audioCtx.createGain();
+
+    carrier.type = voice.wave;
+    carrier.frequency.setValueAtTime(frequency, start);
+    carrier.frequency.exponentialRampToValueAtTime(Math.max(70, frequency * (1 + voice.chirp + mod.chirp)), start + duration * 0.72);
+
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(Math.max(220, voice.formant * mod.pitch), start);
+    filter.Q.value = 7;
+
+    carrierGain.gain.setValueAtTime(0.0001, start);
+    carrierGain.gain.exponentialRampToValueAtTime(Math.max(0.001, volume), start + duration * 0.18);
+    carrierGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    tremolo.type = "sine";
+    tremolo.frequency.value = 10 + mod.jitter * 38 + seed * 2;
+    tremoloGain.gain.value = volume * mod.jitter * 0.45;
+    tremoloDepth.gain.value = 1;
+
+    tremolo.connect(tremoloGain);
+    tremoloGain.connect(carrierGain.gain);
+    carrier.connect(filter);
+    filter.connect(carrierGain);
+    carrierGain.connect(audioMaster);
+
+    carrier.start(start);
+    tremolo.start(start);
+    carrier.stop(start + duration + 0.03);
+    tremolo.stop(start + duration + 0.03);
+
+    if (voice.noise > 0) {
+      const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      }
+      const noise = audioCtx.createBufferSource();
+      const noiseGain = audioCtx.createGain();
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noise.buffer = buffer;
+      noiseFilter.type = "highpass";
+      noiseFilter.frequency.value = 900;
+      noiseGain.gain.setValueAtTime(volume * voice.noise * mod.gain, start);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(audioMaster);
+      noise.start(start);
+      noise.stop(start + duration + 0.02);
+    }
+  }
+
+  function playGibberish(subject, dialogue, force = false) {
+    if (!subject || subject.voiceEnabled === false) return;
+    if (!force && subject.lastSpokenLineIndex === dialogue.index) return;
+    subject.lastSpokenLineIndex = dialogue.index;
+    if (!audioAvailable || !audioCtx || audioCtx.state !== "running") return;
+
+    const voice = VOICE_TYPES[subject.voiceType] || VOICE_TYPES.minion;
+    const mod = EMOTION_VOICE_MODS[dialogue.emotion] || EMOTION_VOICE_MODS.happy;
+    const text = dialogue.line || "";
+    const textWeight = Math.max(3, Math.min(14, Array.from(text).length));
+    const syllableCount = Math.max(3, Math.min(12, Math.ceil(textWeight / 2.2)));
+    const lineDuration = Math.max(0.55, Math.min(3.2, (Number(dialogue.speed) || Number(subject.lineSpeed) || 1.8) * 0.86));
+    const gap = lineDuration / syllableCount;
+    const syllableDuration = Math.max(0.045, Math.min(0.16, gap * 0.58 / mod.rate));
+    const volume = Math.max(0, Math.min(1, Number(subject.voiceVolume ?? 0.58))) * 0.18 * mod.gain;
+    const startAt = audioCtx.currentTime + 0.025;
+
+    for (let i = 0; i < syllableCount; i++) {
+      const seed = ((subject.phase || 0) + i * 1.618 + dialogue.index * 0.37) % 1;
+      const pattern = voice.syllables[i % voice.syllables.length];
+      const emotionJitter = 1 + (Math.sin(i * 2.4 + subject.phase) * mod.jitter);
+      const pitchHop = dialogue.emotion === "surprise" ? 1 + i * 0.035 : dialogue.emotion === "sad" ? 1 - i * 0.018 : 1;
+      const frequency = Math.max(80, (voice.base + voice.spread * (seed - 0.5)) * pattern * mod.pitch * emotionJitter * pitchHop);
+      scheduleVoiceSyllable(voice, mod, startAt + i * gap, syllableDuration, frequency, volume, seed);
+    }
+  }
+
+  async function previewSubjectVoice() {
+    const subject = selectedSubject();
+    if (!subject) return;
+    const ok = await ensureAudio(true);
+    if (!ok) return;
+    const dialogue = getCurrentDialogueState(subject, performance.now());
+    playGibberish(subject, { ...dialogue, index: `preview_${Date.now()}` }, true);
+  }
+
+  function selectedSubject() {
+    return state.subjects.find(subject => subject.id === state.selectedId) || state.subjects[0] || null;
+  }
+
+  function pickPhrase(key = "happy") {
+    const list = emotions[key]?.phrases || emotions.happy.phrases;
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  function normalizeDialogueLines(text, emotion = "happy", persona = "") {
+    const raw = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (raw.length > 0) return raw.slice(0, 12);
+    return generateDialogueLines(persona, emotion);
+  }
+
+  function syncLineEmotions(subject, lines, fallbackEmotion = "happy") {
+    const source = Array.isArray(subject.lineEmotions) ? subject.lineEmotions.slice() : [];
+    subject.lineEmotions = lines.map((_, index) => source[index] || fallbackEmotion);
+    return subject.lineEmotions;
+  }
+
+  function generateDialogueLines(personaText, emotion = "happy") {
+    const persona = String(personaText || "").trim();
+    const mood = emotions[emotion] || emotions.happy;
+    const personaBits = persona
+      ? persona.split(/[，,。.!！？?\s]+/).map(s => s.trim()).filter(Boolean).slice(0, 4)
+      : [];
+
+    const fallbackHooks = {
+      happy: ["今天状态很好", "我想把快乐分给你", "你看，我是不是很亮眼"],
+      surprise: ["等等，刚刚发生了什么", "我真的没有想到", "这也太突然了"],
+      angry: ["我现在有点不爽", "别来惹我", "先让我缓一缓"],
+      rage: ["我已经快炸了", "别再试探我的底线", "今天谁都别碰我"],
+      sad: ["我有点委屈", "其实我只是想被理解", "能不能陪我一下"],
+      shy: ["我先躲一下", "别一直盯着我", "我其实有点不好意思"],
+      smug: ["我已经看穿了", "这波我很懂", "我知道我很厉害"],
+      sleepy: ["我真的困了", "让我再眯一会儿", "电量快见底了"],
+      excited: ["我已经等不及了", "走，我们冲", "这太好玩了"],
+      confused: ["我有点没看懂", "这题怎么解", "我再想想"],
+    };
+
+    const traitHooks = personaBits.length ? personaBits : ["我有自己的小脾气", "我会认真观察", "我喜欢把话说清楚"];
+    const moodHooks = fallbackHooks[emotion] || fallbackHooks.happy;
+    const opener = persona
+      ? `我这个${personaBits[0] || "小家伙"}`
+      : mood.label + "状态启动";
+
+    const pool = [
+      opener,
+      traitHooks[0] ? `我其实${traitHooks[0]}` : `我现在${moodHooks[0]}`,
+      traitHooks[1] ? `平时我会${traitHooks[1]}` : moodHooks[1],
+      traitHooks[2] ? `所以我会${traitHooks[2]}` : moodHooks[2],
+      `现在的我就是${mood.label}一点`,
+      `如果你理解我，我就会更开心`,
+      `我想法很简单：${personaBits[0] || moodHooks[0]}`,
+      `我的特点是${personaBits[1] || traitHooks[0] || moodHooks[1]}`,
+    ];
+
+    const lines = [];
+    for (const item of pool) {
+      if (!item || lines.includes(item)) continue;
+      lines.push(item);
+      if (lines.length >= 6) break;
+    }
+    return lines.length ? lines : [moodHooks[0], moodHooks[1], moodHooks[2]];
+  }
+
+  function getDialogueLines(subject) {
+    const lines = normalizeDialogueLines(subject.dialogueText || "", subject.emotion, subject.persona);
+    subject.dialogueLines = lines;
+    syncLineEmotions(subject, lines, subject.emotion || "happy");
+    return lines;
+  }
+
+  function getCurrentDialogueState(subject, now) {
+    const lines = getDialogueLines(subject);
+    if (!lines.length) return { line: "", index: 0, emotion: subject.emotion || "happy", lines };
+    const speed = Math.max(0.8, Number(subject.lineSpeed) || 1.8);
+    const elapsed = (now - (subject.dialogueStartedAt || state.startedAt)) / 1000;
+    const index = Math.floor(elapsed / speed) % lines.length;
+    const emotion = subject.lineEmotions?.[index] || subject.emotion || "happy";
+    return { line: lines[index], index, emotion, lines, speed };
+  }
+
+  function setAllLineEmotions(subject, emotion) {
+    const lines = getDialogueLines(subject);
+    subject.lineEmotions = lines.map(() => emotion);
+  }
+
+  function setLineEmotion(subject, index, emotion) {
+    const lines = getDialogueLines(subject);
+    subject.lineEmotions[index] = emotion;
+    if (subject.lineEmotions.length < lines.length) {
+      subject.lineEmotions = lines.map((_, i) => subject.lineEmotions[i] || subject.emotion || emotion);
+    }
+  }
+
+  function createSubject(overrides = {}) {
+    const index = state.subjects.length;
+    const baseEmotion = overrides.emotion || "happy";
+    const basePhrase = pickPhrase(baseEmotion);
+    return {
+      id: makeId(),
+      x: CANVAS_W * 0.5 + (index % 2 === 0 ? -70 : 70),
+      y: CANVAS_H * 0.56 + Math.floor(index / 2) * 28,
+      bodySize: 118,
+      faceScale: 1,
+      faceStyle: "classic",
+      textScale: 28,
+      emotion: baseEmotion,
+      legMode: "stand",
+      bubbleStyle: "speech",
+      bubbleScale: 1,
+      voiceType: "minion",
+      voiceEnabled: true,
+      voiceVolume: 0.58,
+      lastSpokenLineIndex: null,
+      dialogueText: basePhrase,
+      dialogueLines: [basePhrase],
+      lineEmotions: [baseEmotion],
+      persona: "",
+      lineSpeed: 1.8,
+      dialogueStartedAt: performance.now(),
+      autoTrack: true,
+      showBody: true,
+      showFace: true,
+      showLegs: false,
+      showText: true,
+      phase: Math.random() * Math.PI * 2,
+      ...overrides
+    };
+  }
+
+  function addSubject(overrides = {}, select = true) {
+    const subject = createSubject(overrides);
+    state.subjects.push(subject);
+    if (select) state.selectedId = subject.id;
+    refreshControls();
+    return subject;
+  }
+
+  function duplicateSelectedSubject() {
+    const subject = selectedSubject();
+    if (!subject) return;
+    const { id, phase, ...rest } = subject;
+    const copy = createSubject({
+      ...rest,
+      x: clamp(subject.x + 60, 80, CANVAS_W - 80),
+      y: clamp(subject.y + 52, 80, CANVAS_H - 80),
+      dialogueText: subject.dialogueText || pickPhrase(subject.emotion),
+      dialogueLines: normalizeDialogueLines(subject.dialogueText, subject.emotion, subject.persona),
+      dialogueStartedAt: performance.now()
+    });
+    state.subjects.push(copy);
+    state.selectedId = copy.id;
+    refreshControls();
+    showToast("已复制一个主体");
+  }
+
+  function removeSelectedSubject() {
+    if (!state.subjects.length) return;
+    if (state.subjects.length === 1) {
+      state.subjects[0] = createSubject({ x: CANVAS_W * 0.5, y: CANVAS_H * 0.56 });
+      state.selectedId = state.subjects[0].id;
+    } else {
+      const id = state.selectedId;
+      state.subjects = state.subjects.filter(subject => subject.id !== id);
+      state.selectedId = state.subjects[0].id;
+    }
+    refreshControls();
+  }
+
+  function selectSubject(id) {
+    state.selectedId = id;
+    refreshControls();
+  }
+
+  function selectedSubjectIndex() {
+    return Math.max(0, state.subjects.findIndex(subject => subject.id === state.selectedId));
+  }
+
+  function refreshControls() {
+    const subject = selectedSubject();
+    const enabled = Boolean(subject);
+    duplicateSubjectBtn.disabled = !enabled;
+    deleteSubjectBtn.disabled = !enabled;
+    detectBtn.disabled = !enabled || !state.source;
+    centerBtn.disabled = !enabled || !state.source;
+    bodySlider.disabled = !enabled;
+    faceSlider.disabled = !enabled;
+    textSlider.disabled = !enabled;
+    bodyToggle.disabled = !enabled;
+    faceToggle.disabled = !enabled;
+    legToggle.disabled = !enabled;
+    textToggle.disabled = !enabled;
+    captionInput.disabled = !enabled;
+    personaInput.disabled = !enabled;
+    speedSlider.disabled = !enabled;
+    voiceVolumeSlider.disabled = !enabled;
+    voiceToggle.disabled = !enabled;
+    previewVoiceBtn.disabled = !enabled;
+    shuffleBtn.disabled = !enabled;
+    autoGenBtn.disabled = !enabled;
+
+    buildSubjectButtons();
+    buildEmotionButtons();
+    buildFaceStyleButtons();
+    buildLegButtons();
+    buildBubbleButtons();
+    buildVoiceButtons();
+    buildLineEmotionPanel();
+
+    if (!subject) {
+      captionInput.value = "";
+      personaInput.value = "";
+      lineEmotionPanel.innerHTML = "";
+      return;
+    }
+
+    captionInput.value = subject.dialogueText || "";
+    personaInput.value = subject.persona || "";
+    bodySlider.value = Math.round(subject.bodySize);
+    faceSlider.value = Math.round(subject.faceScale * 100);
+    textSlider.value = Math.round(subject.textScale);
+    speedSlider.value = Number(subject.lineSpeed || 1.8).toFixed(1);
+    voiceVolumeSlider.value = Math.round(clamp((subject.voiceVolume ?? 0.58) * 100, 0, 100));
+    voiceToggle.checked = subject.voiceEnabled !== false;
+    followToggle.checked = subject.autoTrack !== false;
+    bodyToggle.checked = subject.showBody !== false;
+    faceToggle.checked = subject.showFace !== false;
+    legToggle.checked = subject.showLegs === true;
+    textToggle.checked = subject.showText !== false;
+  }
+
+  function buildSubjectButtons() {
+    subjectList.innerHTML = "";
+    if (!state.subjects.length) {
+      const empty = document.createElement("button");
+      empty.type = "button";
+      empty.className = "chip";
+      empty.disabled = true;
+      empty.textContent = "点击新增主体";
+      subjectList.appendChild(empty);
+      return;
+    }
+
+    state.subjects.forEach((subject, index) => {
+      const mood = emotions[subject.emotion] || emotions.happy;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `chip subject-chip${subject.id === state.selectedId ? " active" : ""}`;
+      btn.innerHTML = `<span>${mood.label}</span><span class="badge">${index + 1}</span>`;
+      btn.addEventListener("click", () => selectSubject(subject.id));
+      subjectList.appendChild(btn);
+    });
+  }
+
+  function buildEmotionButtons() {
+    emotionList.innerHTML = "";
+    const subject = selectedSubject();
+    Object.entries(emotions).forEach(([key, mood]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${subject && subject.emotion === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.innerHTML = `<span class="swatch" style="--swatch:${mood.swatch}"></span>${mood.label}`;
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.emotion = key;
+        if (!target.dialogueText || target.dialogueLines.length <= 1) {
+          const lines = generateDialogueLines(target.persona, key);
+          target.dialogueText = lines.join("\n");
+          target.dialogueLines = lines;
+        }
+        setAllLineEmotions(target, key);
+        resetDialogueVoiceState(target);
+        target.dialogueStartedAt = performance.now();
+        refreshControls();
+      });
+      emotionList.appendChild(btn);
+    });
+  }
+
+  function buildFaceStyleButtons() {
+    faceStyleList.innerHTML = "";
+    const subject = selectedSubject();
+    Object.entries(FACE_STYLES).forEach(([key, style]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${subject && (subject.faceStyle || "classic") === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = style.label;
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.faceStyle = key;
+        refreshControls();
+      });
+      faceStyleList.appendChild(btn);
+    });
+  }
+
+  function buildLegButtons() {
+    legList.innerHTML = "";
+    const subject = selectedSubject();
+    Object.entries(LEG_MODES).forEach(([key, mode]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${subject && subject.legMode === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = mode.label;
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.legMode = key;
+        refreshControls();
+      });
+      legList.appendChild(btn);
+    });
+  }
+
+  function buildBubbleButtons() {
+    bubbleList.innerHTML = "";
+    const subject = selectedSubject();
+    Object.entries(BUBBLE_STYLES).forEach(([key, style]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${subject && subject.bubbleStyle === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = style.label;
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.bubbleStyle = key;
+        refreshControls();
+      });
+      bubbleList.appendChild(btn);
+    });
+  }
+
+  function buildVoiceButtons() {
+    voiceList.innerHTML = "";
+    const subject = selectedSubject();
+    Object.entries(VOICE_TYPES).forEach(([key, voice]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${subject && (subject.voiceType || "minion") === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = voice.label;
+      btn.addEventListener("click", async () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.voiceType = key;
+        await ensureAudio(false);
+        const dialogue = getCurrentDialogueState(target, performance.now());
+        playGibberish(target, { ...dialogue, index: `voice_${Date.now()}` }, true);
+        refreshControls();
+      });
+      voiceList.appendChild(btn);
+    });
+  }
+
+  function buildLineEmotionPanel() {
+    lineEmotionPanel.innerHTML = "";
+    const subject = selectedSubject();
+    if (!subject) {
+      return;
+    }
+
+    const lines = getDialogueLines(subject);
+    if (!lines.length) {
+      const empty = document.createElement("div");
+      empty.className = "line-preview";
+      empty.textContent = "先输入台词，每行一句。";
+      lineEmotionPanel.appendChild(empty);
+      return;
+    }
+
+    lines.forEach((line, index) => {
+      const row = document.createElement("div");
+      row.className = "line-row";
+
+      const meta = document.createElement("div");
+      meta.className = "line-meta";
+      const label = document.createElement("div");
+      label.className = "line-index";
+      label.textContent = `第 ${index + 1} 句`;
+      const preview = document.createElement("div");
+      preview.className = "line-preview";
+      preview.textContent = line;
+      meta.append(label, preview);
+
+      const select = document.createElement("select");
+      select.className = "line-select";
+      select.value = subject.lineEmotions?.[index] || subject.emotion || "happy";
+      Object.entries(emotions).forEach(([key, mood]) => {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = mood.label;
+        if (option.value === select.value) option.selected = true;
+        select.appendChild(option);
+      });
+      select.addEventListener("change", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        setLineEmotion(target, index, select.value);
+        resetDialogueVoiceState(target);
+      });
+
+      row.append(meta, select);
+      lineEmotionPanel.appendChild(row);
+    });
+  }
+
+  function mediaDimensions() {
+    if (!state.source) return { width: CANVAS_W, height: CANVAS_H };
+    if (state.sourceType === "video") {
+      return {
+        width: sourceVideo.videoWidth || CANVAS_W,
+        height: sourceVideo.videoHeight || CANVAS_H
+      };
+    }
+    return {
+      width: state.source.naturalWidth || CANVAS_W,
+      height: state.source.naturalHeight || CANVAS_H
+    };
+  }
+
+  function coverFit(srcW, srcH, dstW = CANVAS_W, dstH = CANVAS_H) {
+    const scale = Math.max(dstW / srcW, dstH / srcH);
+    const w = srcW * scale;
+    const h = srcH * scale;
+    return { x: (dstW - w) / 2, y: (dstH - h) / 2, w, h, scale };
+  }
+
+  function drawMedia(targetCtx, targetW, targetH) {
+    if (!state.source) return;
+    const dims = mediaDimensions();
+    const fit = coverFit(dims.width, dims.height, targetW, targetH);
+    const src = state.sourceType === "video" ? sourceVideo : state.source;
+    targetCtx.drawImage(src, fit.x, fit.y, fit.w, fit.h);
+  }
+
+  function captureFrameImageData() {
+    detectCtx.clearRect(0, 0, DETECT_W, DETECT_H);
+    drawMedia(detectCtx, DETECT_W, DETECT_H);
+    try {
+      return detectCtx.getImageData(0, 0, DETECT_W, DETECT_H);
+    } catch (err) {
+      showToast("浏览器限制了画面读取，请换成本地相册素材。");
+      return null;
+    }
+  }
+
+  function globalDetectSubject(imageData, subject) {
+    const data = imageData.data;
+    const prevX = subject ? subject.x / CANVAS_W * DETECT_W : DETECT_W * 0.5;
+    const prevY = subject ? subject.y / CANVAS_H * DETECT_H : DETECT_H * 0.5;
+    const focusRadius = subject ? Math.max(26, subject.bodySize / CANVAS_W * DETECT_W * 1.55) : 40;
+    let total = 0;
+    let sumX = 0;
+    let sumY = 0;
+    let minX = DETECT_W;
+    let minY = DETECT_H;
+    let maxX = 0;
+    let maxY = 0;
+
+    for (let y = 1; y < DETECT_H - 1; y += 2) {
+      for (let x = 1; x < DETECT_W - 1; x += 2) {
+        const i = (y * DETECT_W + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        const right = ((y * DETECT_W + x + 1) * 4);
+        const down = (((y + 1) * DETECT_W + x) * 4);
+        const lumRight = 0.299 * data[right] + 0.587 * data[right + 1] + 0.114 * data[right + 2];
+        const lumDown = 0.299 * data[down] + 0.587 * data[down + 1] + 0.114 * data[down + 2];
+        const edge = Math.abs(lum - lumRight) + Math.abs(lum - lumDown);
+        const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+        const cx = Math.abs(x / DETECT_W - 0.5);
+        const cy = Math.abs(y / DETECT_H - 0.52);
+        let score = edge * 1.1 + saturation * 0.42;
+        score *= Math.max(0.2, 1 - Math.hypot(cx * 1.2, cy) * 0.9);
+
+        if (subject) {
+          const d = Math.hypot(x - prevX, y - prevY);
+          if (d > focusRadius * 2.1) score *= 0.12;
+          else score *= 1 + Math.max(0, 1 - d / (focusRadius * 2.1)) * 1.35;
+        }
+
+        if (score > 42) {
+          total += score;
+          sumX += x * score;
+          sumY += y * score;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    if (total < 1000) {
+      return { x: CANVAS_W * 0.5, y: CANVAS_H * 0.48, bodySize: subject ? subject.bodySize : 125 };
+    }
+
+    const x = sumX / total / DETECT_W * CANVAS_W;
+    const y = sumY / total / DETECT_H * CANVAS_H;
+    const extent = Math.max(maxX - minX, maxY - minY) / DETECT_W * CANVAS_W;
+    const bodySize = Math.max(76, Math.min(172, extent * 0.62));
+    return { x, y, bodySize };
+  }
+
+  function localTrackSubject(imageData, subject) {
+    const centerX = subject.x / CANVAS_W * DETECT_W;
+    const centerY = subject.y / CANVAS_H * DETECT_H;
+    const searchR = Math.max(18, subject.bodySize / CANVAS_W * DETECT_W * 0.42);
+    const radius = Math.max(12, subject.bodySize / CANVAS_W * DETECT_W * 0.46);
+    const offsets = [-0.48, -0.24, 0, 0.24, 0.48];
+    let best = { score: -Infinity, x: centerX, y: centerY };
+
+    for (const ox of offsets) {
+      for (const oy of offsets) {
+        const cx = clamp(centerX + ox * searchR, radius, DETECT_W - radius - 1);
+        const cy = clamp(centerY + oy * searchR, radius, DETECT_H - radius - 1);
+        const sample = scorePatch(imageData, cx, cy, radius);
+        const distancePenalty = Math.hypot(cx - centerX, cy - centerY) / (searchR * 1.9);
+        const score = sample.score - distancePenalty * 18;
+        if (score > best.score) {
+          best = { score, x: sample.x, y: sample.y };
+        }
+      }
+    }
+
+    return {
+      x: best.x / DETECT_W * CANVAS_W,
+      y: best.y / DETECT_H * CANVAS_H
+    };
+  }
+
+  function scorePatch(imageData, cx, cy, radius) {
+    const data = imageData.data;
+    const minX = Math.max(1, Math.floor(cx - radius));
+    const maxX = Math.min(DETECT_W - 2, Math.ceil(cx + radius));
+    const minY = Math.max(1, Math.floor(cy - radius));
+    const maxY = Math.min(DETECT_H - 2, Math.ceil(cy + radius));
+    let score = 0;
+    let sumX = 0;
+    let sumY = 0;
+
+    for (let y = minY; y <= maxY; y += 2) {
+      for (let x = minX; x <= maxX; x += 2) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.hypot(dx, dy) / radius;
+        if (dist > 1) continue;
+        const i = (y * DETECT_W + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        const right = ((y * DETECT_W + x + 1) * 4);
+        const down = (((y + 1) * DETECT_W + x) * 4);
+        const lumRight = 0.299 * data[right] + 0.587 * data[right + 1] + 0.114 * data[right + 2];
+        const lumDown = 0.299 * data[down] + 0.587 * data[down + 1] + 0.114 * data[down + 2];
+        const edge = Math.abs(lum - lumRight) + Math.abs(lum - lumDown);
+        const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+        const weight = Math.max(0, 1 - dist);
+        const local = (edge * 1.1 + saturation * 0.42) * weight;
+        score += local;
+        sumX += x * local;
+        sumY += y * local;
+      }
+    }
+
+    if (score <= 0) return { score: -Infinity, x: cx, y: cy };
+    return { score, x: sumX / score, y: sumY / score };
+  }
+
+  function trackSubjects(imageData) {
+    for (const subject of state.subjects) {
+      if (subject.id === state.draggingId) continue;
+      if (subject.autoTrack === false) continue;
+      const next = localTrackSubject(imageData, subject);
+      subject.x += (next.x - subject.x) * 0.18;
+      subject.y += (next.y - subject.y) * 0.18;
+    }
+  }
+
+  function detectSelectedSubject(global = false) {
+    const subject = selectedSubject();
+    if (!subject || !state.source) return;
+    const imageData = captureFrameImageData();
+    if (!imageData) return;
+    const next = global ? globalDetectSubject(imageData, subject) : localTrackSubject(imageData, subject);
+    subject.x = clamp(next.x, 40, CANVAS_W - 40);
+    subject.y = clamp(next.y, 40, CANVAS_H - 40);
+    subject.bodySize = clamp(next.bodySize || subject.bodySize, 54, 220);
+    bodySlider.value = Math.round(subject.bodySize);
+  }
+
+  function drawFallbackBackground(now) {
+    const t = now * 0.001;
+    const grad = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+    grad.addColorStop(0, "#23252d");
+    grad.addColorStop(0.55, "#17191e");
+    grad.addColorStop(1, "#2a201b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    for (let i = 0; i < 24; i++) {
+      const x = (Math.sin(i * 1.7 + t * 0.42) * 0.5 + 0.5) * CANVAS_W;
+      const y = (i * 73 + t * 12) % CANVAS_H;
+      ctx.fillStyle = `rgba(255,255,255,${0.03 + (i % 5) * 0.01})`;
+      ctx.fillRect(x, y, 2 + (i % 4), 2 + (i % 4));
+    }
+  }
+
+  function render(now = performance.now()) {
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    if (state.source) {
+      drawMedia(ctx, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "rgba(0,0,0,0.03)";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      if (state.sourceType === "video" && !state.draggingId && now - state.lastTrackAt > 150) {
+        state.lastTrackAt = now;
+        const imageData = captureFrameImageData();
+        if (imageData) trackSubjects(imageData);
+      }
+      const ordered = [...state.subjects].sort((a, b) => a.y - b.y);
+      for (const subject of ordered) {
+        drawSubject(subject, now);
+      }
+    } else {
+      drawFallbackBackground(now);
+    }
+    requestAnimationFrame(render);
+  }
+
+  function drawSubject(subject, now) {
+    const t = (now - state.startedAt) * 0.001;
+    const pulse = Math.sin(t * 5.2 + subject.phase);
+    const quick = Math.sin(t * 12 + subject.phase * 1.6);
+    const bodyR = subject.bodySize;
+    const faceR = bodyR * subject.faceScale * 0.82;
+    const bodyY = subject.y + pulse * bodyR * 0.03;
+    const faceY = bodyY - bodyR * 0.21 + pulse * bodyR * 0.03;
+    const dialogue = getCurrentDialogueState(subject, now);
+    const mood = emotions[dialogue.emotion] || emotions.happy;
+    const bubbleText = dialogue.line;
+
+    if (!state.exporting || state.recordingAudio) {
+      playGibberish(subject, dialogue);
+    }
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (subject.showLegs === true) {
+      drawLegs(subject, mood, subject.x, bodyY, bodyR, t, pulse, quick);
+    }
+    if (subject.showBody !== false) {
+      drawBody(subject, mood, subject.x, bodyY, bodyR, pulse, quick);
+      drawArms(subject, mood, subject.x, bodyY, bodyR, t, pulse, quick);
+    }
+    if (subject.showFace !== false) {
+    drawFace(subject, mood, subject.x, faceY, faceR, t, pulse);
+    }
+    if (subject.showText !== false) {
+      drawBubble(subject, mood, subject.x, bodyY, bodyR, bubbleText);
+    }
+    ctx.restore();
+  }
+
+  function drawBody(subject, mood, x, y, bodyR, pulse, quick) {
+    const bodyW = bodyR * 1.04;
+    const bodyH = bodyR * 1.38;
+    ctx.save();
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = mood.swatch;
+    ctx.beginPath();
+    ctx.ellipse(x, y + bodyR * 0.04, bodyW * 0.58, bodyH * 0.52 + Math.sin(quick) * bodyR * 0.02, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.ellipse(x - bodyR * 0.12, y - bodyR * 0.14, bodyR * 0.34, bodyR * 0.28, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawFace(subject, mood, x, y, faceR, t, pulse) {
+    const style = subject.faceStyle || "classic";
+    ctx.save();
+    drawFaceBase(subject, mood, x, y, faceR, t, pulse);
+    ctx.restore();
+
+    ctx.save();
+    drawEyes(subject, mood, x, y, faceR, t);
+    drawBrows(subject, mood, x, y, faceR, t);
+    drawMouth(subject, mood, x, y, faceR, t, pulse);
+    drawCheeks(subject, mood, x, y, faceR, t);
+    drawSparkMarks(subject, mood, x, y, faceR, t);
+    drawFaceAccessories(subject, mood, x, y, faceR, t, pulse);
+    ctx.restore();
+  }
+
+  function drawFaceBase(subject, mood, x, y, r, t, pulse) {
+    const style = subject.faceStyle || "classic";
+    if (style === "line" || style === "sticker" || style === "cool") return;
+    ctx.globalAlpha = style === "chibi" ? 0.34 : style === "kawaii" ? 0.2 : style === "dramatic" ? 0.22 : 0.14;
+    ctx.fillStyle = style === "chibi" ? mood.swatch : mood.swatch;
+    ctx.beginPath();
+    if (style === "chibi") {
+      const wobble = Math.sin(t * 3 + subject.phase) * r * 0.03;
+      ctx.ellipse(x + wobble, y + r * 0.08, r * 0.9, r * 0.68 + pulse * r * 0.02, -0.08, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(x, y + r * 0.07, r * 0.84, r * 0.6, -0.05, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  function eyeShape(x, y, w, h, rotation = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEyes(subject, mood, x, y, r, t) {
+    const style = subject.faceStyle || "classic";
+    const blink = Math.sin(t * 2.7) > 0.94 ? 0.18 : 1;
+    const wide = mood.eye === "wide" || mood.eye === "spark" || style === "dramatic" ? 1.28 : style === "kawaii" ? 1.16 : 1;
+    const tiny = mood.eye === "tiny" || style === "line" ? 0.72 : 1;
+    const droop = mood.eye === "teary" || mood.eye === "sleepy" ? r * 0.05 : 0;
+    const leftX = x - r * 0.22;
+    const rightX = x + r * 0.22;
+    const eyeY = y - r * 0.06 + droop;
+    const eyeW = r * 0.16 * wide * tiny;
+    const eyeH = r * 0.22 * wide * blink;
+
+    ctx.lineWidth = Math.max(4, r * 0.035);
+    ctx.strokeStyle = "#111";
+    ctx.fillStyle = "#fff";
+
+    if (style === "line") {
+      ctx.lineWidth = Math.max(3, r * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(leftX - eyeW, eyeY);
+      ctx.quadraticCurveTo(leftX, eyeY + eyeH * 0.25, leftX + eyeW, eyeY);
+      ctx.moveTo(rightX - eyeW, eyeY);
+      ctx.quadraticCurveTo(rightX, eyeY + eyeH * 0.25, rightX + eyeW, eyeY);
+      ctx.stroke();
+    } else if (style === "cool") {
+      drawCoolGlasses(x, eyeY, r, t);
+    } else if (style === "glasses") {
+      drawRoundGlasses(x, eyeY, r, t);
+    } else if (style === "kawaii") {
+      drawKawaiiEyes(leftX, rightX, eyeY, eyeW, eyeH, t, r);
+    } else if (style === "sticker") {
+      drawStickerEyes(leftX, rightX, eyeY, eyeW, eyeH, t, r);
+    } else if (mood.eye === "angry") {
+      eyeShape(leftX, eyeY, eyeW * 1.05, eyeH * 0.82, -0.08);
+      eyeShape(rightX, eyeY, eyeW * 1.05, eyeH * 0.82, 0.08);
+    } else if (mood.eye === "wink") {
+      ctx.beginPath();
+      ctx.moveTo(leftX - eyeW, eyeY);
+      ctx.quadraticCurveTo(leftX, eyeY - eyeH * 0.45, leftX + eyeW, eyeY);
+      ctx.stroke();
+      eyeShape(rightX, eyeY, eyeW, eyeH * 0.92, 0.02);
+    } else if (mood.eye === "half" || mood.eye === "sleepy") {
+      ctx.beginPath();
+      ctx.moveTo(leftX - eyeW, eyeY);
+      ctx.quadraticCurveTo(leftX, eyeY + eyeH * 0.3, leftX + eyeW, eyeY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(rightX - eyeW, eyeY);
+      ctx.quadraticCurveTo(rightX, eyeY + eyeH * 0.3, rightX + eyeW, eyeY);
+      ctx.stroke();
+    } else if (mood.eye === "cross") {
+      eyeShape(leftX, eyeY, eyeW * 1.02, eyeH * 0.92, -0.02);
+      eyeShape(rightX, eyeY, eyeW * 1.02, eyeH * 0.92, 0.02);
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = Math.max(3, r * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(leftX - r * 0.05, eyeY - r * 0.05);
+      ctx.lineTo(leftX + r * 0.05, eyeY + r * 0.05);
+      ctx.moveTo(leftX - r * 0.05, eyeY + r * 0.05);
+      ctx.lineTo(leftX + r * 0.05, eyeY - r * 0.05);
+      ctx.moveTo(rightX - r * 0.05, eyeY - r * 0.05);
+      ctx.lineTo(rightX + r * 0.05, eyeY + r * 0.05);
+      ctx.moveTo(rightX - r * 0.05, eyeY + r * 0.05);
+      ctx.lineTo(rightX + r * 0.05, eyeY - r * 0.05);
+      ctx.stroke();
+    } else {
+      eyeShape(leftX, eyeY, eyeW, eyeH, -0.02);
+      eyeShape(rightX, eyeY, eyeW, eyeH, 0.02);
+    }
+
+    if (!["cool", "glasses", "kawaii", "sticker", "line"].includes(style)) {
+      const look = Math.sin(t * 1.7) * r * 0.022;
+      ctx.fillStyle = "#111";
+      const pupilR = r * (mood.eye === "spark" ? 0.062 : 0.054) * tiny;
+      ctx.beginPath();
+      ctx.arc(leftX + look, eyeY + r * 0.015, pupilR, 0, Math.PI * 2);
+      ctx.arc(rightX + look, eyeY + r * 0.015, pupilR, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.beginPath();
+      ctx.arc(leftX + look + r * 0.018, eyeY - r * 0.018, r * 0.018, 0, Math.PI * 2);
+      ctx.arc(rightX + look + r * 0.018, eyeY - r * 0.018, r * 0.018, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (mood.eye === "teary" || style === "dramatic") {
+      ctx.fillStyle = "rgba(110,200,255,0.82)";
+      ctx.beginPath();
+      ctx.ellipse(leftX - r * 0.045, eyeY + r * 0.17, r * 0.028, r * 0.046, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(rightX + r * 0.045, eyeY + r * 0.17, r * 0.028, r * 0.046, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawBrows(subject, mood, x, y, r, t) {
+    const style = subject.faceStyle || "classic";
+    if (style === "cool" || style === "glasses") return;
+    const bounce = Math.sin(t * 6) * r * 0.012;
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(4, r * (style === "line" ? 0.03 : 0.044));
+
+    if (style === "kawaii" && (mood.brow === "soft" || mood.brow === "lift")) {
+      ctx.lineWidth = Math.max(4, r * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.34, y - r * 0.31 - bounce);
+      ctx.quadraticCurveTo(x - r * 0.22, y - r * 0.39, x - r * 0.12, y - r * 0.32);
+      ctx.moveTo(x + r * 0.12, y - r * 0.32);
+      ctx.quadraticCurveTo(x + r * 0.22, y - r * 0.39, x + r * 0.34, y - r * 0.31 - bounce);
+      ctx.stroke();
+      return;
+    }
+
+    if (style === "sticker" && mood.eye !== "angry") {
+      ctx.lineWidth = Math.max(5, r * 0.052);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.34, y - r * 0.27 - bounce);
+      ctx.lineTo(x - r * 0.17, y - r * 0.27 - bounce);
+      ctx.moveTo(x + r * 0.17, y - r * 0.27 + bounce);
+      ctx.lineTo(x + r * 0.34, y - r * 0.27 + bounce);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.brow === "angry" || mood.brow === "rage") {
+      const shake = mood.brow === "rage" ? Math.sin(t * 20) * r * 0.02 : 0;
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.4, y - r * 0.32 + shake);
+      ctx.lineTo(x - r * 0.14, y - r * 0.22 - bounce);
+      ctx.moveTo(x + r * 0.4, y - r * 0.32 - shake);
+      ctx.lineTo(x + r * 0.14, y - r * 0.22 - bounce);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.brow === "sad") {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.38, y - r * 0.23);
+      ctx.quadraticCurveTo(x - r * 0.25, y - r * 0.34, x - r * 0.1, y - r * 0.27);
+      ctx.moveTo(x + r * 0.38, y - r * 0.23);
+      ctx.quadraticCurveTo(x + r * 0.25, y - r * 0.34, x + r * 0.1, y - r * 0.27);
+      ctx.stroke();
+      return;
+    }
+
+    const lift = mood.brow === "up" ? r * 0.12 : mood.brow === "lift" ? r * 0.08 : 0;
+    const tilt = mood.brow === "tilt" ? r * 0.08 : 0;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.38, y - r * 0.26 - lift - bounce);
+    ctx.quadraticCurveTo(x - r * 0.24, y - r * 0.34 - lift, x - r * 0.1, y - r * 0.3 - lift + bounce + tilt);
+    ctx.moveTo(x + r * 0.1, y - r * 0.3 - lift + bounce - tilt);
+    ctx.quadraticCurveTo(x + r * 0.24, y - r * 0.34 - lift, x + r * 0.38, y - r * 0.26 - lift - bounce);
+    ctx.stroke();
+  }
+
+  function drawMouth(subject, mood, x, y, r, t, pulse) {
+    const style = subject.faceStyle || "classic";
+    const wobble = Math.sin(t * 8) * 0.06;
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(4, r * (style === "line" ? 0.032 : 0.04));
+    ctx.fillStyle = "#8d1f23";
+
+    if (style === "line") {
+      drawLineStyleMouth(mood, x, y, r, t);
+      return;
+    }
+
+    if (style === "kawaii" && (mood.mouth === "smile" || mood.mouth === "smirk")) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.16, y + r * 0.2);
+      ctx.quadraticCurveTo(x - r * 0.06, y + r * 0.32 + pulse * r * 0.015, x, y + r * 0.23);
+      ctx.quadraticCurveTo(x + r * 0.08, y + r * 0.32 - pulse * r * 0.015, x + r * 0.18, y + r * 0.2);
+      ctx.stroke();
+      return;
+    }
+
+    if (style === "sticker" && mood.mouth === "smile") {
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.22, r * 0.13, r * 0.1, 0, 0, Math.PI);
+      ctx.fillStyle = "#ff3d57";
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+
+    if (style === "dramatic" && (mood.mouth === "open" || mood.mouth === "o")) {
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.26, r * 0.18, r * (0.28 + Math.abs(pulse) * 0.03), 0, 0, Math.PI * 2);
+      ctx.fillStyle = "#1c1216";
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+
+    if (style === "cool" && (mood.mouth === "smile" || mood.mouth === "smirk")) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.1, y + r * 0.22);
+      ctx.quadraticCurveTo(x + r * 0.08, y + r * 0.29, x + r * 0.26, y + r * 0.19);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "smile") {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.21, y + r * 0.22);
+      ctx.quadraticCurveTo(x, y + r * (0.36 + wobble), x + r * 0.24, y + r * 0.2);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "open") {
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.23, r * 0.14, r * (0.2 + wobble), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "smirk") {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.18, y + r * 0.21);
+      ctx.quadraticCurveTo(x + r * 0.04, y + r * 0.34, x + r * 0.22, y + r * 0.2);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "question") {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.18, y + r * 0.24);
+      ctx.quadraticCurveTo(x, y + r * 0.12, x + r * 0.17, y + r * 0.24);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + r * 0.19, y + r * 0.33, r * 0.03, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+
+    if (mood.mouth === "yawn") {
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.22, r * 0.15, r * 0.2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "#7d1e1e";
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "grit") {
+      roundRectPath(x - r * 0.24, y + r * 0.18, r * 0.48, r * 0.16, r * 0.06);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.2, y + r * 0.26);
+      ctx.lineTo(x + r * 0.2, y + r * 0.26);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "shout") {
+      roundRectPath(x - r * 0.27, y + r * 0.13, r * 0.54, r * 0.26, r * 0.08);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = Math.max(3, r * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.2, y + r * 0.2);
+      ctx.lineTo(x + r * 0.2, y + r * 0.18);
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "sad") {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.2, y + r * 0.31);
+      ctx.quadraticCurveTo(x, y + r * 0.14, x + r * 0.22, y + r * 0.3);
+      ctx.stroke();
+    }
+  }
+
+  function drawCheeks(subject, mood, x, y, r, t) {
+    const style = subject.faceStyle || "classic";
+    if (mood.mouth === "grit" || mood.mouth === "shout" || mood.mouth === "open") return;
+    if (style === "cool") return;
+    const alpha = style === "kawaii" || style === "chibi" ? 0.48 + Math.sin(t * 4) * 0.08 : mood.mouth === "sad" ? 0.18 : 0.32 + Math.sin(t * 4) * 0.08;
+    const cheekW = r * (style === "kawaii" || style === "chibi" ? 0.14 : 0.1);
+    const cheekH = r * (style === "kawaii" || style === "chibi" ? 0.07 : 0.05);
+    ctx.fillStyle = `rgba(255, 82, 132, ${alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.42, y + r * 0.13, cheekW, cheekH, -0.28, 0, Math.PI * 2);
+    ctx.ellipse(x + r * 0.42, y + r * 0.13, cheekW, cheekH, 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    if (style === "kawaii" || style === "chibi") {
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = Math.max(2, r * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.46, y + r * 0.1);
+      ctx.lineTo(x - r * 0.4, y + r * 0.16);
+      ctx.moveTo(x + r * 0.4, y + r * 0.1);
+      ctx.lineTo(x + r * 0.46, y + r * 0.16);
+      ctx.stroke();
+    }
+  }
+
+  function drawCoolGlasses(x, y, r, t) {
+    const tilt = Math.sin(t * 2) * 0.04;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.fillStyle = "#111";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(5, r * 0.04);
+    roundRectPath(-r * 0.43, -r * 0.14, r * 0.34, r * 0.22, r * 0.05);
+    ctx.fill();
+    roundRectPath(r * 0.09, -r * 0.14, r * 0.34, r * 0.22, r * 0.05);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.09, -r * 0.04);
+    ctx.lineTo(r * 0.09, -r * 0.04);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = Math.max(2, r * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.35, -r * 0.1);
+    ctx.lineTo(-r * 0.18, r * 0.02);
+    ctx.moveTo(r * 0.17, -r * 0.1);
+    ctx.lineTo(r * 0.34, r * 0.02);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRoundGlasses(x, y, r, t) {
+    const shine = Math.sin(t * 3) * r * 0.012;
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(4, r * 0.034);
+    ctx.fillStyle = "rgba(162, 221, 255, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.23, y, r * 0.18, r * 0.19, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + r * 0.23, y, r * 0.18, r * 0.19, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.05, y - r * 0.02);
+    ctx.quadraticCurveTo(x, y - r * 0.08, x + r * 0.05, y - r * 0.02);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.72)";
+    ctx.lineWidth = Math.max(2, r * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.31, y - r * 0.07 + shine);
+    ctx.lineTo(x - r * 0.18, y + r * 0.05 + shine);
+    ctx.moveTo(x + r * 0.15, y - r * 0.07 - shine);
+    ctx.lineTo(x + r * 0.29, y + r * 0.05 - shine);
+    ctx.stroke();
+  }
+
+  function drawKawaiiEyes(leftX, rightX, eyeY, eyeW, eyeH, t, r) {
+    const glow = Math.sin(t * 4) * r * 0.008;
+    ctx.fillStyle = "#fff";
+    eyeShape(leftX, eyeY, eyeW * 1.12, eyeH * 1.06 + glow, -0.04);
+    eyeShape(rightX, eyeY, eyeW * 1.12, eyeH * 1.06 - glow, 0.04);
+    ctx.fillStyle = "#151821";
+    ctx.beginPath();
+    ctx.ellipse(leftX, eyeY + r * 0.012, eyeW * 0.55, eyeH * 0.62, 0, 0, Math.PI * 2);
+    ctx.ellipse(rightX, eyeY + r * 0.012, eyeW * 0.55, eyeH * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.beginPath();
+    ctx.arc(leftX + r * 0.03, eyeY - r * 0.04, r * 0.034, 0, Math.PI * 2);
+    ctx.arc(leftX - r * 0.035, eyeY + r * 0.015, r * 0.017, 0, Math.PI * 2);
+    ctx.arc(rightX + r * 0.03, eyeY - r * 0.04, r * 0.034, 0, Math.PI * 2);
+    ctx.arc(rightX - r * 0.035, eyeY + r * 0.015, r * 0.017, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(2, r * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(leftX - eyeW * 1.1, eyeY - eyeH * 0.12);
+    ctx.lineTo(leftX - eyeW * 1.35, eyeY - eyeH * 0.42);
+    ctx.moveTo(rightX + eyeW * 1.1, eyeY - eyeH * 0.12);
+    ctx.lineTo(rightX + eyeW * 1.35, eyeY - eyeH * 0.42);
+    ctx.stroke();
+  }
+
+  function drawStickerEyes(leftX, rightX, eyeY, eyeW, eyeH, t, r) {
+    const hop = Math.sin(t * 5) * r * 0.018;
+    ctx.fillStyle = "#151821";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(4, r * 0.034);
+    drawStar(leftX, eyeY + hop, r * 0.095, "#ffdd55", true);
+    drawStar(rightX, eyeY - hop, r * 0.095, "#ff7aa2", true);
+    ctx.fillStyle = "rgba(255,255,255,0.86)";
+    ctx.beginPath();
+    ctx.arc(leftX + r * 0.025, eyeY - r * 0.025 + hop, r * 0.014, 0, Math.PI * 2);
+    ctx.arc(rightX + r * 0.025, eyeY - r * 0.025 - hop, r * 0.014, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawLineStyleMouth(mood, x, y, r, t) {
+    const wiggle = Math.sin(t * 6) * r * 0.01;
+    ctx.beginPath();
+    if (mood.mouth === "sad") {
+      ctx.moveTo(x - r * 0.18, y + r * 0.28);
+      ctx.quadraticCurveTo(x, y + r * 0.13 + wiggle, x + r * 0.18, y + r * 0.28);
+    } else if (mood.mouth === "grit") {
+      ctx.moveTo(x - r * 0.18, y + r * 0.24);
+      ctx.lineTo(x - r * 0.08, y + r * 0.2);
+      ctx.lineTo(x, y + r * 0.27);
+      ctx.lineTo(x + r * 0.08, y + r * 0.2);
+      ctx.lineTo(x + r * 0.18, y + r * 0.24);
+    } else if (mood.mouth === "open" || mood.mouth === "o") {
+      ctx.ellipse(x, y + r * 0.23, r * 0.08, r * 0.12, 0, 0, Math.PI * 2);
+    } else {
+      ctx.moveTo(x - r * 0.18, y + r * 0.2);
+      ctx.quadraticCurveTo(x - r * 0.08, y + r * 0.3 + wiggle, x, y + r * 0.22);
+      ctx.quadraticCurveTo(x + r * 0.08, y + r * 0.3 - wiggle, x + r * 0.18, y + r * 0.2);
+    }
+    ctx.stroke();
+  }
+
+  function drawFaceAccessories(subject, mood, x, y, r, t, pulse) {
+    const style = subject.faceStyle || "classic";
+    const bob = Math.sin(t * 5 + subject.phase) * r * 0.025;
+    if (style === "sticker" || style === "kawaii" || mood.eye === "spark") {
+      drawStar(x + r * 0.55, y - r * 0.2 + bob, r * 0.055, "#ffd447", true);
+      drawHeart(x - r * 0.56, y - r * 0.15 - bob, r * 0.05, "#ff6b8f");
+    }
+    if (style === "dramatic" || mood.mouth === "shout" || mood.brow === "rage") {
+      ctx.strokeStyle = "#ff3b30";
+      ctx.lineWidth = Math.max(3, r * 0.026);
+      ctx.beginPath();
+      ctx.moveTo(x + r * 0.45, y - r * 0.42 + bob);
+      ctx.lineTo(x + r * 0.5, y - r * 0.56 + bob);
+      ctx.lineTo(x + r * 0.57, y - r * 0.45 + bob);
+      ctx.moveTo(x + r * 0.61, y - r * 0.55 - bob);
+      ctx.lineTo(x + r * 0.64, y - r * 0.39 - bob);
+      ctx.stroke();
+    }
+    if (style === "chibi") {
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = Math.max(3, r * 0.025);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.12, y - r * 0.63 + bob);
+      ctx.quadraticCurveTo(x, y - r * 0.77 + bob, x + r * 0.08, y - r * 0.63 + bob);
+      ctx.stroke();
+      ctx.fillStyle = "#8bedb5";
+      ctx.beginPath();
+      ctx.ellipse(x + r * 0.17, y - r * 0.69 + bob, r * 0.07, r * 0.034, -0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    if (style === "cool") {
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = Math.max(3, r * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.16, y + r * 0.35);
+      ctx.quadraticCurveTo(x - r * 0.08, y + r * 0.41, x, y + r * 0.35);
+      ctx.quadraticCurveTo(x + r * 0.08, y + r * 0.41, x + r * 0.16, y + r * 0.35);
+      ctx.stroke();
+    }
+  }
+
+  function drawHeart(x, y, size, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(size / 24, size / 24);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, 8);
+    ctx.bezierCurveTo(-14, -2, -10, -15, 0, -8);
+    ctx.bezierCurveTo(10, -15, 14, -2, 0, 8);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStar(x, y, size, color, outlined = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const rr = i % 2 === 0 ? size : size * 0.46;
+      const px = Math.cos(a) * rr;
+      const py = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    if (outlined) {
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = Math.max(2, size * 0.16);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSparkMarks(subject, mood, x, y, r, t) {
+    if (mood.eye !== "spark" && mood.brow !== "rage" && mood.eye !== "cross") return;
+    ctx.strokeStyle = mood.brow === "rage" ? "#ff3b30" : "#fff";
+    ctx.lineWidth = Math.max(3, r * 0.026);
+    const jitter = Math.sin(t * 18 + subject.phase) * r * 0.025;
+    ctx.beginPath();
+    if (mood.brow === "rage") {
+      ctx.moveTo(x + r * 0.48, y - r * 0.18 + jitter);
+      ctx.lineTo(x + r * 0.62, y - r * 0.28);
+      ctx.moveTo(x + r * 0.52, y - r * 0.04 - jitter);
+      ctx.lineTo(x + r * 0.68, y - r * 0.08);
+      ctx.moveTo(x - r * 0.48, y - r * 0.18 - jitter);
+      ctx.lineTo(x - r * 0.62, y - r * 0.28);
+    } else {
+      ctx.moveTo(x + r * 0.52, y - r * 0.18);
+      ctx.lineTo(x + r * 0.62, y - r * 0.31);
+      ctx.moveTo(x + r * 0.56, y - r * 0.03);
+      ctx.lineTo(x + r * 0.7, y - r * 0.04);
+    }
+    ctx.stroke();
+  }
+
+  function drawArms(subject, mood, x, y, r, t, pulse, quick) {
+    ctx.strokeStyle = mood.arm === "hug" ? "#fff" : "#111";
+    ctx.lineWidth = Math.max(11, r * 0.085);
+    const wobble = Math.sin(t * 4 + subject.phase) * r * 0.08;
+    const shake = quick * r * 0.08;
+    const leftShoulder = { x: x - r * 0.44, y: y + r * 0.02 };
+    const rightShoulder = { x: x + r * 0.44, y: y + r * 0.02 };
+
+    ctx.beginPath();
+    if (mood.arm === "wave") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.quadraticCurveTo(x - r * 0.9, y - r * 0.22 + wobble, x - r * 0.72, y - r * 0.78 + wobble);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.quadraticCurveTo(x + r * 0.76, y + r * 0.16 - wobble, x + r * 0.9, y - r * 0.2);
+    } else if (mood.arm === "up") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.quadraticCurveTo(x - r * 0.78, y - r * 0.45, x - r * 0.58, y - r * 0.96 - wobble);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.quadraticCurveTo(x + r * 0.78, y - r * 0.45, x + r * 0.58, y - r * 0.96 + wobble);
+    } else if (mood.arm === "point") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.lineTo(x - r * 1.04, y - r * 0.44 + wobble);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.lineTo(x + r * 1.12, y - r * 0.18 - wobble);
+    } else if (mood.arm === "shake") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.lineTo(x - r * 0.98 + shake, y - r * 0.48);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.lineTo(x + r * 0.98 - shake, y - r * 0.48);
+    } else if (mood.arm === "hug") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.quadraticCurveTo(x - r * 0.38, y + r * 0.42 + pulse * r * 0.04, x - r * 0.06, y + r * 0.35);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.quadraticCurveTo(x + r * 0.38, y + r * 0.42 - pulse * r * 0.04, x + r * 0.06, y + r * 0.35);
+    } else if (mood.arm === "spread") {
+      ctx.moveTo(leftShoulder.x, leftShoulder.y);
+      ctx.quadraticCurveTo(x - r * 0.9, y - r * 0.38, x - r * 1.05, y + r * 0.03);
+      ctx.moveTo(rightShoulder.x, rightShoulder.y);
+      ctx.quadraticCurveTo(x + r * 0.9, y - r * 0.38, x + r * 1.05, y + r * 0.03);
+    }
+    ctx.stroke();
+
+    drawHandDots(mood, x, y, r, wobble, shake);
+  }
+
+  function drawHandDots(mood, x, y, r, wobble, shake) {
+    ctx.fillStyle = mood.arm === "hug" ? "#fff" : "#111";
+    const handR = Math.max(8, r * 0.07);
+    let points;
+    if (mood.arm === "wave") {
+      points = [[x - r * 0.72, y - r * 0.78 + wobble], [x + r * 0.9, y - r * 0.2]];
+    } else if (mood.arm === "up") {
+      points = [[x - r * 0.58, y - r * 0.96 - wobble], [x + r * 0.58, y - r * 0.96 + wobble]];
+    } else if (mood.arm === "point") {
+      points = [[x - r * 1.04, y - r * 0.44 + wobble], [x + r * 1.12, y - r * 0.18 - wobble]];
+    } else if (mood.arm === "shake") {
+      points = [[x - r * 0.98 + shake, y - r * 0.48], [x + r * 0.98 - shake, y - r * 0.48]];
+    } else if (mood.arm === "spread") {
+      points = [[x - r * 1.05, y + r * 0.03], [x + r * 1.05, y + r * 0.03]];
+    } else {
+      points = [[x - r * 0.06, y + r * 0.35], [x + r * 0.06, y + r * 0.35]];
+    }
+    for (const [px, py] of points) {
+      ctx.beginPath();
+      ctx.arc(px, py, handR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawLegs(subject, mood, x, y, r, t, pulse, quick) {
+    const mode = subject.legMode || "stand";
+    const hipY = y + r * 0.62;
+    const hipSpread = r * 0.18;
+    const legLen = r * 0.92;
+    const footR = Math.max(6, r * 0.05);
+    const swing = {
+      stand: 0.03,
+      walk: 0.38,
+      run: 0.56,
+      jump: 0.12
+    }[mode] || 0.03;
+    const bounce = {
+      stand: 0.02,
+      walk: 0.05,
+      run: 0.09,
+      jump: 0.22
+    }[mode] || 0.03;
+    const baseLift = mode === "jump" ? -r * 0.16 : 0;
+    const leftPhase = Math.sin(t * (mode === "run" ? 7.2 : 4.8) + subject.phase);
+    const rightPhase = Math.sin(t * (mode === "run" ? 7.2 : 4.8) + subject.phase + Math.PI);
+    const leftForward = leftPhase * swing * r;
+    const rightForward = rightPhase * swing * r;
+    const sway = Math.sin(t * 2.5 + subject.phase) * r * 0.02;
+
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = Math.max(10, r * 0.08);
+
+    function legPath(side, forward, phaseLift, bendExtra) {
+      const sx = x + side * hipSpread;
+      const sy = hipY + baseLift + pulse * r * bounce;
+      const kneeX = sx + side * forward * 0.42;
+      const kneeY = sy + legLen * 0.42 - phaseLift;
+      const footX = sx + side * forward * 0.8 + bendExtra;
+      const footY = sy + legLen * 0.98 - phaseLift;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(kneeX, kneeY, footX, footY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(footX, footY, footR, 0, Math.PI * 2);
+      ctx.fillStyle = "#111";
+      ctx.fill();
+    }
+
+    if (mode === "stand") {
+      legPath(-1, sway * 0.2, 0, 0);
+      legPath(1, -sway * 0.2, 0, 0);
+    } else if (mode === "walk") {
+      legPath(-1, leftForward, Math.max(0, -leftPhase) * r * 0.06, 0);
+      legPath(1, rightForward, Math.max(0, -rightPhase) * r * 0.06, 0);
+    } else if (mode === "run") {
+      legPath(-1, leftForward * 1.2, Math.max(0, -leftPhase) * r * 0.1, -r * 0.02);
+      legPath(1, rightForward * 1.2, Math.max(0, -rightPhase) * r * 0.1, r * 0.02);
+    } else if (mode === "jump") {
+      const lift = Math.max(0, Math.sin(t * 4 + subject.phase)) * r * 0.2;
+      legPath(-1, -swing * r * 0.25, lift * 0.7, -r * 0.03);
+      legPath(1, swing * r * 0.25, lift * 0.7, r * 0.03);
+    }
+  }
+
+  function drawBubble(subject, mood, x, y, r, text) {
+    if (!text) return;
+    ctx.save();
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+
+    const maxBubbleW = Math.min(CANVAS_W - 44, Math.max(230, r * 2.35 * subject.bubbleScale));
+    const maxBubbleH = Math.min(240, Math.max(96, r * 1.55));
+    const padX = 24;
+    const padY = 16;
+    const layout = fitBubbleText(text, maxBubbleW - padX * 2, maxBubbleH - padY * 2, subject.textScale);
+    const textW = Math.max(...layout.lines.map(line => ctx.measureText(line).width));
+    const bubbleW = Math.min(maxBubbleW, Math.max(170, textW + padX * 2));
+    const bubbleH = Math.min(maxBubbleH, Math.max(66, layout.lines.length * layout.lineH + padY * 2));
+    const side = x < CANVAS_W * 0.58 ? 1 : -1;
+    let bx = x + side * r * 0.92;
+    let by = y - r * 1.22;
+    bx = Math.max(18 + bubbleW / 2, Math.min(CANVAS_W - 18 - bubbleW / 2, bx));
+    by = Math.max(72 + bubbleH / 2, Math.min(CANVAS_H - 20 - bubbleH / 2, by));
+
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = mood.bubble;
+    ctx.strokeStyle = "rgba(25,25,28,0.92)";
+    ctx.lineWidth = 4;
+    drawBubbleShape(subject.bubbleStyle, bx, by, bubbleW, bubbleH, x, y, side, r);
+
+    ctx.shadowColor = "transparent";
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx - bubbleW / 2 + padX * 0.62, by - bubbleH / 2 + padY * 0.72, bubbleW - padX * 1.24, bubbleH - padY * 1.44);
+    ctx.clip();
+    ctx.font = `${layout.fontSize}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.fillStyle = "#171717";
+    layout.lines.forEach((line, index) => {
+      const ly = by - (layout.lines.length - 1) * layout.lineH / 2 + index * layout.lineH;
+      ctx.fillText(line, bx, ly);
+    });
+    ctx.restore();
+    ctx.restore();
+  }
+
+  function fitBubbleText(text, maxWidth, maxHeight, desiredFont) {
+    let fontSize = Math.max(12, Math.min(42, desiredFont));
+
+    while (fontSize >= 12) {
+      ctx.font = `${fontSize}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+      const lines = wrapText(text, maxWidth);
+      const lineH = Math.max(20, fontSize * 1.26);
+      if (lines.length <= 4 && lines.length * lineH <= maxHeight) {
+        return { fontSize, lines, lineH };
+      }
+      fontSize -= 1;
+    }
+
+    ctx.font = `12px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    const lines = wrapText(text, maxWidth).slice(0, 4);
+    if (lines.length === 4) lines[3] = trimTextToWidth(lines[3], maxWidth);
+    return { fontSize: 12, lines, lineH: 20 };
+  }
+
+  function trimTextToWidth(text, maxWidth) {
+    let result = text;
+    while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth) {
+      result = result.slice(0, -1);
+    }
+    return `${result}…`;
+  }
+
+  function drawBubbleShape(style, bx, by, bubbleW, bubbleH, x, y, side, r) {
+    const tailX = Math.max(bx - bubbleW / 2 + 28, Math.min(bx + bubbleW / 2 - 28, x + side * r * 0.36));
+    const left = bx - bubbleW / 2;
+    const top = by - bubbleH / 2;
+    const right = bx + bubbleW / 2;
+    const bottom = by + bubbleH / 2;
+
+    if (style === "cloud") {
+      ctx.beginPath();
+      ctx.arc(left + bubbleW * 0.22, by, bubbleH * 0.22, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.arc(bx, top + bubbleH * 0.22, bubbleW * 0.18, Math.PI, 0);
+      ctx.arc(right - bubbleW * 0.18, by, bubbleH * 0.22, Math.PI * 1.5, Math.PI * 0.5);
+      ctx.arc(bx, bottom - bubbleH * 0.22, bubbleW * 0.18, 0, Math.PI);
+      ctx.closePath();
+    } else if (style === "sharp") {
+      ctx.beginPath();
+      const spikes = 7;
+      for (let i = 0; i < spikes; i++) {
+        const px = left + (bubbleW / spikes) * i;
+        const py = i % 2 === 0 ? top - 8 : top + 4;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(right, top + bubbleH * 0.18);
+      ctx.lineTo(right + 10, by);
+      ctx.lineTo(right - bubbleW * 0.05, bottom - 4);
+      for (let i = spikes - 1; i >= 0; i--) {
+        const px = left + (bubbleW / spikes) * i;
+        const py = i % 2 === 0 ? bottom + 8 : bottom - 4;
+        ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    } else if (style === "note") {
+      roundRectPath(left, top, bubbleW, bubbleH, 16);
+      ctx.moveTo(right - 34, top);
+      ctx.lineTo(right, top + 28);
+      ctx.lineTo(right - 10, top + 28);
+      ctx.lineTo(right - 34, top);
+      ctx.closePath();
+    } else if (style === "pill") {
+      roundRectPath(left, top, bubbleW, bubbleH, bubbleH / 2);
+    } else {
+      roundRectPath(left, top, bubbleW, bubbleH, 18);
+    }
+
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(tailX, bottom - 2);
+    ctx.lineTo(tailX + side * 18, bottom + 24);
+    ctx.lineTo(tailX - side * 28, bottom - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function wrapText(text, maxWidth) {
+    const lines = [];
+    for (const para of String(text).split(/\n+/)) {
+      const chars = Array.from(para);
+      let line = "";
+      for (const ch of chars) {
+        const next = line + ch;
+        if (ctx.measureText(next).width > maxWidth && line) {
+          lines.push(line);
+          line = ch;
+        } else {
+          line = next;
+        }
+      }
+      if (line) lines.push(line);
+    }
+    return lines.slice(0, 4);
+  }
+
+  function roundRectPath(x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  function canvasPointFromEvent(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / rect.width * CANVAS_W,
+      y: (event.clientY - rect.top) / rect.height * CANVAS_H
+    };
+  }
+
+  function subjectAtPoint(point) {
+    return [...state.subjects]
+      .sort((a, b) => b.y - a.y)
+      .find(subject => Math.hypot(point.x - subject.x, point.y - subject.y) < subject.bodySize * 1.15);
+  }
+
+  function beginDrag(event) {
+    if (!state.source) return;
+    const point = canvasPointFromEvent(event);
+    let subject = subjectAtPoint(point);
+    if (!subject) {
+      subject = addSubject({
+        x: clamp(point.x, 60, CANVAS_W - 60),
+        y: clamp(point.y, 70, CANVAS_H - 70)
+      }, true);
+      showToast("已新增一个主体");
+    } else {
+      selectSubject(subject.id);
+    }
+    state.draggingId = subject.id;
+    state.dragOffsetX = point.x - subject.x;
+    state.dragOffsetY = point.y - subject.y;
+    event.preventDefault();
+  }
+
+  function moveDrag(event) {
+    if (!state.draggingId) return;
+    const subject = state.subjects.find(item => item.id === state.draggingId);
+    if (!subject) return;
+    const point = canvasPointFromEvent(event);
+    subject.x = clamp(point.x - state.dragOffsetX, 40, CANVAS_W - 40);
+    subject.y = clamp(point.y - state.dragOffsetY, 40, CANVAS_H - 40);
+    event.preventDefault();
+  }
+
+  function endDrag() {
+    state.draggingId = null;
+  }
+
+  async function loadFile(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      showToast("请选择图片或视频素材。");
+      return;
+    }
+    await ensureAudio(false);
+    if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+    state.objectUrl = URL.createObjectURL(file);
+    state.sourceType = file.type.startsWith("video/") ? "video" : "image";
+    state.subjects = [createSubject({ x: CANVAS_W * 0.5, y: CANVAS_H * 0.56 })];
+    state.selectedId = state.subjects[0].id;
+    emptyState.classList.add("hidden");
+    exportBtn.disabled = true;
+    refreshControls();
+    setStatus("素材加载中");
+
+    if (state.sourceType === "video") {
+      await loadVideo(state.objectUrl);
+      state.source = sourceVideo;
+      setStatus("正在推荐主角");
+      detectSelectedSubject(true);
+      sourceVideo.play().catch(() => {});
+    } else {
+      state.source = await loadImage(state.objectUrl);
+      setStatus("正在推荐主角");
+      detectSelectedSubject(true);
+    }
+
+    exportBtn.disabled = false;
+    refreshControls();
+    setStatus(state.sourceType === "video" ? "已导入视频" : "已导入图片");
+    showToast("点击空白处可新增主体，拖动已有主体可微调位置。");
+  }
+
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  function loadVideo(url) {
+    return new Promise((resolve, reject) => {
+      sourceVideo.pause();
+      sourceVideo.src = url;
+      sourceVideo.currentTime = 0;
+      sourceVideo.onloadeddata = () => resolve();
+      sourceVideo.onerror = reject;
+      sourceVideo.load();
+    });
+  }
+
+  function chooseMime() {
+    const candidates = [
+      "video/mp4;codecs=avc1.42E01E",
+      "video/mp4",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm"
+    ];
+    if (!window.MediaRecorder) return "";
+    return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function createRecorder(stream) {
+    const candidates = [
+      "video/mp4;codecs=avc1.42E01E",
+      "video/mp4",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm"
+    ];
+    if (!window.MediaRecorder) return null;
+    for (const mimeType of candidates) {
+      if (!MediaRecorder.isTypeSupported(mimeType)) continue;
+      try {
+        return { recorder: new MediaRecorder(stream, { mimeType }), mimeType };
+      } catch (err) {
+        console.warn("MediaRecorder mime failed", mimeType, err);
+      }
+    }
+    try {
+      return { recorder: new MediaRecorder(stream), mimeType: "" };
+    } catch (err) {
+      console.warn("MediaRecorder default failed", err);
+      return null;
+    }
+  }
+
+  function waitForSeek(video) {
+    return new Promise(resolve => {
+      let finished = false;
+      const done = () => {
+        if (finished) return;
+        finished = true;
+        video.removeEventListener("seeked", done);
+        resolve();
+      };
+      video.addEventListener("seeked", done, { once: true });
+      requestAnimationFrame(() => {
+        if (!finished && Math.abs(video.currentTime - 0) < 0.01) done();
+      });
+    });
+  }
+
+  async function exportVideo() {
+    if (!state.source || state.exporting) return;
+    if (!canvas.captureStream || !window.MediaRecorder) {
+      showToast("当前浏览器不支持直接导出，请换 Chrome 或新版 Safari。");
+      return;
+    }
+
+    const audioOk = await ensureAudio(true);
+    if (!audioOk) return;
+
+    state.exporting = true;
+    exportBtn.disabled = true;
+    pickBtn.disabled = true;
+    setStatus("正在录制画布");
+
+    const chunks = [];
+    videoStream = canvas.captureStream(30);
+    const audioTracks = audioDestination?.stream?.getAudioTracks?.() || [];
+    if (!audioTracks.length) {
+      showToast("当前浏览器无法导出声音轨。");
+      state.exporting = false;
+      exportBtn.disabled = false;
+      pickBtn.disabled = false;
+      return;
+    }
+    const combinedStream = new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...audioTracks
+    ]);
+    const recorderInfo = createRecorder(combinedStream);
+    if (!recorderInfo) {
+      showToast("当前浏览器没有可用的视频编码器。");
+      state.exporting = false;
+      exportBtn.disabled = false;
+      pickBtn.disabled = false;
+      return;
+    }
+    const { recorder, mimeType } = recorderInfo;
+    recorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) chunks.push(event.data);
+    };
+
+    const stopped = new Promise(resolve => {
+      recorder.onstop = () => resolve();
+    });
+
+    let restoreTime = 0;
+    let stopTimer;
+    let videoStream = null;
+
+    try {
+      if (state.sourceType === "video") {
+        restoreTime = sourceVideo.currentTime || 0;
+        sourceVideo.loop = false;
+        sourceVideo.pause();
+        sourceVideo.currentTime = 0;
+        await waitForSeek(sourceVideo);
+        recorder.start(250);
+        state.recordingAudio = true;
+        for (const subject of state.subjects) {
+          resetDialogueVoiceState(subject);
+          subject.dialogueStartedAt = performance.now();
+        }
+        await sourceVideo.play();
+        const stopAt = Math.min((sourceVideo.duration || EXPORT_MAX_SECONDS) * 1000, EXPORT_MAX_SECONDS * 1000);
+        stopTimer = setTimeout(() => {
+          if (recorder.state !== "inactive") recorder.stop();
+        }, stopAt);
+        sourceVideo.addEventListener("ended", () => {
+          if (recorder.state !== "inactive") recorder.stop();
+        }, { once: true });
+      } else {
+        recorder.start(250);
+        state.recordingAudio = true;
+        for (const subject of state.subjects) {
+          resetDialogueVoiceState(subject);
+          subject.dialogueStartedAt = performance.now();
+        }
+        stopTimer = setTimeout(() => {
+          if (recorder.state !== "inactive") recorder.stop();
+        }, EXPORT_IMAGE_SECONDS * 1000);
+      }
+
+      await stopped;
+      clearTimeout(stopTimer);
+      const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+      if (state.captureUrl) URL.revokeObjectURL(state.captureUrl);
+      state.captureUrl = URL.createObjectURL(blob);
+      const ext = (mimeType || "").includes("mp4") ? "mp4" : "webm";
+      const a = document.createElement("a");
+      a.href = state.captureUrl;
+      a.download = `emotion-character-${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setStatus("导出完成");
+      showToast(`已导出 ${ext.toUpperCase()} 视频。`);
+    } catch (err) {
+      console.error(err);
+      showToast("导出失败，换一个更短的视频试试。");
+      setStatus("导出失败");
+    } finally {
+      state.recordingAudio = false;
+      if (state.sourceType === "video") {
+        sourceVideo.loop = true;
+        sourceVideo.currentTime = Math.min(restoreTime, sourceVideo.duration || restoreTime);
+        sourceVideo.play().catch(() => {});
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      state.exporting = false;
+      exportBtn.disabled = false;
+      pickBtn.disabled = false;
+    }
+  }
+
+  pickBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", event => loadFile(event.target.files[0]));
+  exportBtn.addEventListener("click", exportVideo);
+  addSubjectBtn.addEventListener("click", () => {
+    if (!state.source) {
+      showToast("先导入图片或视频，再添加主体。");
+      return;
+    }
+    addSubject({
+      x: CANVAS_W * 0.5 + Math.min(120, state.subjects.length * 36),
+      y: CANVAS_H * 0.56 + Math.min(120, state.subjects.length * 24)
+    }, true);
+    showToast("已新增一个主体");
+  });
+  duplicateSubjectBtn.addEventListener("click", duplicateSelectedSubject);
+  deleteSubjectBtn.addEventListener("click", removeSelectedSubject);
+
+  shuffleBtn.addEventListener("click", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    const lines = emotions[subject.emotion].phrases.slice();
+    while (lines.length < 5) lines.push(pickPhrase(subject.emotion));
+    subject.dialogueText = lines.slice(0, 5).join("\n");
+    subject.dialogueLines = normalizeDialogueLines(subject.dialogueText, subject.emotion, subject.persona);
+    subject.lineEmotions = subject.dialogueLines.map(() => subject.emotion);
+    resetDialogueVoiceState(subject);
+    subject.dialogueStartedAt = performance.now();
+    captionInput.value = subject.dialogueText;
+    buildLineEmotionPanel();
+  });
+  autoGenBtn.addEventListener("click", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.persona = personaInput.value.trim();
+    const lines = generateDialogueLines(subject.persona, subject.emotion);
+    subject.dialogueText = lines.join("\n");
+    subject.dialogueLines = lines;
+    subject.lineEmotions = lines.map(() => subject.emotion);
+    resetDialogueVoiceState(subject);
+    subject.dialogueStartedAt = performance.now();
+    captionInput.value = subject.dialogueText;
+    buildLineEmotionPanel();
+    showToast("已按想法和特点生成多句台词");
+  });
+  captionInput.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.dialogueText = captionInput.value;
+    subject.dialogueLines = normalizeDialogueLines(subject.dialogueText, subject.emotion, subject.persona);
+    syncLineEmotions(subject, subject.dialogueLines, subject.emotion);
+    resetDialogueVoiceState(subject);
+    subject.dialogueStartedAt = performance.now();
+    buildLineEmotionPanel();
+  });
+  personaInput.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.persona = personaInput.value;
+  });
+  detectBtn.addEventListener("click", () => {
+    detectSelectedSubject(true);
+    refreshControls();
+    showToast("已重新推荐当前主体位置");
+  });
+  centerBtn.addEventListener("click", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.x = CANVAS_W * 0.5;
+    subject.y = CANVAS_H * 0.54;
+    refreshControls();
+  });
+  bodySlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.bodySize = Number(bodySlider.value);
+  });
+  faceSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.faceScale = Number(faceSlider.value) / 100;
+  });
+  textSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.textScale = Number(textSlider.value);
+  });
+  speedSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.lineSpeed = Number(speedSlider.value);
+    resetDialogueVoiceState(subject);
+    subject.dialogueStartedAt = performance.now();
+  });
+  voiceVolumeSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.voiceVolume = Number(voiceVolumeSlider.value) / 100;
+  });
+  voiceToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.voiceEnabled = voiceToggle.checked;
+  });
+  previewVoiceBtn.addEventListener("click", previewSubjectVoice);
+  followToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.autoTrack = followToggle.checked;
+  });
+  bodyToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.showBody = bodyToggle.checked;
+  });
+  faceToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.showFace = faceToggle.checked;
+  });
+  legToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.showLegs = legToggle.checked;
+  });
+  textToggle.addEventListener("change", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.showText = textToggle.checked;
+  });
+
+  stage.addEventListener("dragover", event => event.preventDefault());
+  stage.addEventListener("drop", event => {
+    event.preventDefault();
+    loadFile(event.dataTransfer.files[0]);
+  });
+
+  canvas.addEventListener("pointerdown", beginDrag);
+  window.addEventListener("pointermove", moveDrag);
+  window.addEventListener("pointerup", endDrag);
+  initPanelResize();
+  refreshControls();
+  requestAnimationFrame(render);
+
+  // iOS-style Tab Switching
+  const sheetTabs = document.querySelectorAll('.sheet-tab');
+  const sheetPanels = document.querySelectorAll('.sheet-panel');
+  sheetTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      sheetTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+      sheetPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
+    });
+  });
+
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

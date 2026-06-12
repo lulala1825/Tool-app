@@ -1,0 +1,27 @@
+{
+  "name": "情绪拟人短视频",
+  "short_name": "情绪拟人",
+  "description": "让静物有情绪，导入照片或短视频，给主角加表情、手臂和气泡。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121114",
+  "theme_color": "#121114",
+  "orientation": "portrait",
+  "scope": ".",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["photo", "video", "entertainment"],
+  "lang": "zh-CN"
+}
