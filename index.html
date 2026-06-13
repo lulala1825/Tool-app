@@ -652,6 +652,100 @@ input[type="range"]::-moz-range-thumb {
   }
   body { background: #0a0a0c; }
 }
+
+/* Live mode chat bar & indicators */
+#liveChatBar {
+  animation: liveSlideUp 0.25s ease;
+}
+@keyframes liveSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#liveSendBtn.loading {
+  pointer-events: none;
+  opacity: 0.5;
+  font-size:0;
+}
+#liveSendBtn.loading::after {
+  content: "";
+  width: 14px; height: 14px;
+  border: 2px solid transparent;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  position: absolute;
+}
+#liveIndicator {
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+#listeningIndicator {
+  animation: listenBreath 1.2s ease-in-out infinite;
+}
+@keyframes listenBreath {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.08); }
+}
+#liveChatInput::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+/* 语音按钮状态 */
+#liveMicBtn:active,
+#liveMicBtn.listening {
+  transform: scale(1.12);
+  box-shadow: 0 4px 32px rgba(255,59,48,0.55);
+  border-color: rgba(255,59,48,0.6);
+  background: #ff453a;
+}
+#liveMicBtn.listening::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,59,48,0.35);
+  animation: micRing 1s ease-out infinite;
+}
+@keyframes micRing {
+  0%   { inset: -8px; opacity: 1; }
+  100% { inset: -24px; opacity: 0; }
+}
+#liveMicBtn.loading {
+  pointer-events: none;
+  background: rgba(255,255,255,0.2);
+  border-color: transparent;
+  box-shadow: none;
+  font-size: 0;
+}
+#liveRecordBtn.recording {
+  background: #ff453a;
+  color: #fff;
+  animation: recPulse 0.8s ease-in-out infinite;
+}
+@keyframes recPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+}
+#recordingTimer {
+  animation: recBlink 1s step-end infinite;
+}
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+#liveMicBtn.loading::before {
+  content: "";
+  width: 20px; height: 20px;
+  border: 2.5px solid transparent;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
 </style>
 </head>
 <body>
@@ -666,6 +760,26 @@ input[type="range"]::-moz-range-thumb {
   <section class="stage-wrap" aria-label="预览区">
     <div class="stage" id="stage">
       <canvas id="canvas" width="720" height="1280"></canvas>
+      <div id="liveIndicator" style="display:none;position:absolute;top:8px;left:8px;z-index:10;background:rgba(255,59,48,0.82);color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px;letter-spacing:0.04em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">● LIVE</div>
+      <button id="flipCameraBtn" style="display:none;position:absolute;top:8px;right:8px;z-index:10;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.5);border:0.5px solid rgba(255,255,255,0.2);color:#fff;font-size:18px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)" title="翻转摄像头">↻</button>
+      <button id="liveRecordBtn" style="display:none;position:absolute;top:8px;right:52px;z-index:10;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.5);border:1.5px solid rgba(255,59,48,0.7);color:#ff453a;font-size:14px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)" title="录制对话">⏺</button>
+      <div id="recordingTimer" style="display:none;position:absolute;top:12px;left:52px;z-index:10;color:#ff453a;font-size:13px;font-weight:700;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">● 00:00</div>
+      <div id="listeningIndicator" style="display:none;position:absolute;top:8px;right:52px;z-index:10;background:rgba(10,132,255,0.85);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">🎤 正在听…</div>
+      <div id="liveChatBar" style="display:none;position:absolute;bottom:8px;left:0;right:0;z-index:10;text-align:center">
+        <!-- 按住说话按钮 -->
+        <button id="liveMicBtn" style="width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px;border:3px solid rgba(255,255,255,0.25);cursor:pointer;box-shadow:0 4px 20px rgba(10,132,255,0.35);transition:transform 0.15s,box-shadow 0.15s;position:relative">
+          🎤
+        </button>
+        <div id="liveMicHint" style="color:rgba(255,255,255,0.55);font-size:12px;margin-top:6px">按住 说话</div>
+        <!-- 文字输入（备用，点击键盘图标切换） -->
+        <div id="liveTextRow" style="display:none;margin-top:8px;padding:0 12px">
+          <div style="display:flex;gap:6px;background:rgba(0,0,0,0.72);border-radius:16px;padding:6px 8px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:0.5px solid rgba(255,255,255,0.15)">
+            <input id="liveChatInput" type="text" placeholder="输入消息…" style="flex:1;min-height:34px;border:none;background:transparent;color:#fff;font-size:15px;outline:none;padding:0 6px">
+            <button id="liveSendBtn" style="width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;font-size:15px;border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0">↑</button>
+          </div>
+        </div>
+        <button id="liveKeyboardBtn" style="position:absolute;right:12px;bottom:4px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer">⌨</button>
+      </div>
       <div class="empty-state" id="emptyState">
         <div class="empty-card">
           <div class="empty-face"><span class="empty-mouth"></span></div>
@@ -691,6 +805,7 @@ input[type="range"]::-moz-range-thumb {
       <button class="sheet-tab" data-tab="body" type="button">肢体</button>
       <button class="sheet-tab" data-tab="text" type="button">文字</button>
       <button class="sheet-tab" data-tab="voice" type="button">声音</button>
+      <button class="sheet-tab" data-tab="live" type="button">对话</button>
     </div>
     <div class="sheet-panels">
       <div class="sheet-panel active" data-panel="subject">
@@ -705,7 +820,10 @@ input[type="range"]::-moz-range-thumb {
           <button class="btn" id="detectBtn" disabled>重新识别</button>
           <button class="btn" id="centerBtn" disabled>居中</button>
         </div>
-        <label class="ios-toggle">
+        <div class="panel-title" style="margin-top:10px"><span>人格特点（必选）</span></div>
+        <div class="row scroll" id="personaChipList"></div>
+        <div id="personaDesc" style="font-size:11px;color:var(--text-tertiary);line-height:1.5;margin-top:4px;min-height:18px"></div>
+        <label class="ios-toggle" style="margin-top:8px">
           <input id="followToggle" type="checkbox" checked>
           <span class="toggle-track"><span class="toggle-knob"></span></span>
           <span class="toggle-label">智能追踪画面主体</span>
@@ -746,14 +864,6 @@ input[type="range"]::-moz-range-thumb {
         <div class="row">
           <textarea class="field" id="captionInput" rows="3" placeholder="气泡文字，每行一句"></textarea>
           <button class="icon-btn" id="shuffleBtn" title="换一句">↻</button>
-        </div>
-        <div class="panel-title" style="margin-top:10px">
-          <span>人格设定（每个主体独立）</span>
-          <span class="panel-actions" id="personaSubjectTag" style="font-size:11px;color:var(--text-tertiary)"></span>
-        </div>
-        <div class="row">
-          <textarea class="field" id="personaInput" rows="2" placeholder="输入这个小人的想法、特点、口癖"></textarea>
-          <button class="icon-btn" id="autoGenBtn" title="本地模板生成">↻</button>
         </div>
         <div class="panel-title" style="margin-top:12px"><span>气泡样式</span></div>
         <div class="row scroll" id="bubbleList"></div>
@@ -799,6 +909,27 @@ input[type="range"]::-moz-range-thumb {
         <div class="row">
           <label class="ios-list-item" style="flex:1"><span>开启声音</span><input id="voiceToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
           <button class="icon-btn" id="previewVoiceBtn" title="试听声音">♪</button>
+        </div>
+      </div>
+      <div class="sheet-panel" data-panel="live">
+        <div class="panel-title"><span>实时对话模式</span></div>
+        <label class="ios-list-item">
+          <span>开启实时对话</span>
+          <input id="liveToggle" type="checkbox">
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+        </label>
+        <div class="panel-subtitle" style="margin-top:6px;font-size:12px;color:var(--text-tertiary)">
+          开启后可使用摄像头进行 AI 实时对话。<br>双击画面选择对话对象即可开始。
+        </div>
+        <div id="liveStatus" style="font-size:13px;color:var(--text-tertiary);margin-top:4px"></div>
+        <div class="panel-title" style="margin-top:12px"><span>对话话题</span></div>
+        <div class="row">
+          <textarea class="field" id="liveTopicInput" rows="2" placeholder="当前想聊的话题（也可在对话中自然切换）"></textarea>
+        </div>
+        <div class="panel-title" style="margin-top:10px"><span>对话记录</span></div>
+        <div id="liveChatLog" style="max-height:160px;overflow-y:auto;font-size:12px;color:var(--text-secondary);line-height:1.6;background:rgba(0,0,0,0.15);border-radius:10px;padding:8px 10px;min-height:40px"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="clearChatBtn" style="min-height:36px;font-size:13px">清空对话</button>
         </div>
       </div>
     </div>
@@ -964,6 +1095,22 @@ input[type="range"]::-moz-range-thumb {
     child: 1.18,       // 小孩连珠炮
     villain: 0.78,     // 坏人慢条斯理
     male: 0.92         // 男声稳健
+  };
+
+  // 《知否》人物人格预设
+  const PERSONA_PRESETS = {
+    盛明兰: { label:"盛明兰 · 隐忍藏锋", desc:"善于隐藏真实想法，情绪不轻易外露。冷静通透，边界感强，对得失看得很淡。平时低调顺从，但触及底线时果断决绝。知恩图报，对少数真正在乎的人极度忠诚。", voice:"yujie", emotion:"cool" },
+    顾廷烨: { label:"顾廷烨 · 浪子涅槃", desc:"胆识过人，有谋略且有担当。对敌人狠辣，对爱人深情但略带霸道。重情重义，厌恶虚伪，行事不拘一格。经历过挫折后脱胎换骨，做事果决。", voice:"male", emotion:"proud" },
+    盛老太太: { label:"盛老太太 · 孤勇守护", desc:"出身高贵，性情清高，一生要强。洞察世事，运筹帷幄，是家族的精神支柱。身教重于言传，独立而强大。因过往创伤而不敢再轻易相信人心。", voice:"yujie", emotion:"cool" },
+    王若弗: { label:"王若弗 · 耿直火爆", desc:"遇不公或挑衅瞬间爆发，战斗力十足。情绪全写脸上，喜怒哀乐一眼看穿。嘴硬心软，吃软不吃硬。缺乏主心骨，容易听信他人谗言。", voice:"northeast", emotion:"angry" },
+    林噙霜: { label:"林噙霜 · 柔弱操控", desc:"工于心计，善于利用柔弱姿态博取同情。深谙人性，擅长操控他人情绪。极度缺乏安全感，为自保不择手段。一生都在扮演别人喜欢的角色，活得疲惫而扭曲。", voice:"yujie", emotion:"sad" },
+    康姨妈: { label:"康姨妈 · 嫉妒空心", desc:"极度自我中心，认为世界该围绕自己转。心狠手辣，表面友善背后使坏。全部动力来自嫉妒，见不得别人比自己好。永远不知足，最终被自己的恶意反噬。", voice:"villain", emotion:"jealous" },
+    盛如兰: { label:"盛如兰 · 人间清醒", desc:"骄纵任性但不失善良，情绪外露。敢爱敢恨，护短且仗义。不贪心，不虚荣，知道自己要什么。看似最笨，实则活得最通透、最知足。", voice:"child", emotion:"happy" },
+    盛墨兰: { label:"盛墨兰 · 精致攀附", desc:"自负才情，处处要强，喜欢表现。嫉妒心重，见不得别人超过自己。为达目的不择手段，不惜损害家族利益。永不知足，聪明但格局小，最终画地为牢。", voice:"yujie", emotion:"smug" },
+    盛长柏: { label:"盛长柏 · 刚正孤行", desc:"寡言少语，严于律己。处事公允，坚守礼法与正义。对婚姻忠诚，厌恶纳妾。内心有大智慧，但行事一丝不苟，略显刻板。", voice:"male", emotion:"cool" },
+    盛华兰: { label:"盛华兰 · 端水艺术", desc:"端庄大方，深明大义。善于平衡各方关系，是家族中的沟通桥梁。能长期隐忍，等待时机扭转局面。果敢沉着，懂得借力改变自己的处境。", voice:"yujie", emotion:"expecting" },
+    齐衡: { label:"齐衡 · 温润金笼", desc:"才华横溢，相貌出众，举止优雅。心地纯善，但性格优柔寡断。受制于家庭权势，缺乏挣脱的勇气。痴情但被动，言语间总带着一丝无奈。", voice:"mandarin", emotion:"shy" },
+    小秦氏: { label:"小秦氏 · 伪善布局", desc:"表面贤淑温婉，实则心机深沉。信奉'捧杀'，以纵容和娇惯来毁人。从不亲自出手，善于借刀杀人。一生为儿子谋划，讲话滴水不漏。", voice:"yujie", emotion:"mocking" }
   };
 
   const emotions = {
@@ -1419,7 +1566,6 @@ ${topic}
       // 若用户没填人格，用 AI 生成的填充
       if (!persona && parsed.persona) {
         subject.persona = parsed.persona;
-        personaInput.value = parsed.persona;
       }
       // 用 AI 生成的语速
       if (parsed.speechRate && Number.isFinite(parsed.speechRate)) {
@@ -1481,14 +1627,14 @@ ${topic}
   const speedSubjectTag = document.getElementById("speedSubjectTag");
   const captionInput = document.getElementById("captionInput");
   const lineEmotionPanel = document.getElementById("lineEmotionPanel");
-  const personaInput = document.getElementById("personaInput");
+  const personaChipList = document.getElementById("personaChipList");
+  const personaDesc = document.getElementById("personaDesc");
   const topicInput = document.getElementById("topicInput");
   const aiGenBtn = document.getElementById("aiGenBtn");
   const apiKeyInput = document.getElementById("apiKeyInput");
   const apiModelSelect = document.getElementById("apiModelSelect");
   const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
   const shuffleBtn = document.getElementById("shuffleBtn");
-  const autoGenBtn = document.getElementById("autoGenBtn");
   const bodySlider = document.getElementById("bodySlider");
   const faceSlider = document.getElementById("faceSlider");
   const textSlider = document.getElementById("textSlider");
@@ -1534,7 +1680,26 @@ ${topic}
     recordingAudio: false,
     lastTrackAt: 0,
     startedAt: performance.now(),
-    subjectButtons: new Map()
+    subjectButtons: new Map(),
+    liveMode: {
+      enabled: false,
+      cameraStream: null,
+      selectedSubjectId: null,
+      messages: [],
+      isGenerating: false,
+      isListening: false,
+      recognition: null,
+      lastTapTime: 0,
+      lastTapPoint: { x: 0, y: 0 },
+      facingMode: "user",
+      // 录制
+      isRecording: false,
+      mediaRecorder: null,
+      recordedChunks: [],
+      recordStream: null,
+      recordStartTime: 0,
+      recordTimerInterval: null
+    }
   };
 
   function setStatus(text) {
@@ -1985,6 +2150,530 @@ ${topic}
     return state.subjects.find(subject => subject.id === state.selectedId) || state.subjects[0] || null;
   }
 
+  // ===== 实时对话模式 =====
+
+  async function startCamera(facingMode = "user") {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("当前浏览器不支持摄像头访问");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode,
+        width: { ideal: 720 },
+        height: { ideal: 1280 }
+      }
+    });
+    state.liveMode.cameraStream = stream;
+    state.liveMode.facingMode = facingMode;
+    sourceVideo.srcObject = stream;
+    sourceVideo.playsInline = true;
+    sourceVideo.muted = true;
+    await sourceVideo.play();
+    state.source = sourceVideo;
+    state.sourceType = "video";
+    if (emptyState) emptyState.classList.add("hidden");
+    exportBtn.disabled = false;
+    setStatus("摄像头已就绪，双击画面选定对话对象");
+  }
+
+  function stopCamera() {
+    if (state.liveMode.cameraStream) {
+      state.liveMode.cameraStream.getTracks().forEach(t => t.stop());
+      state.liveMode.cameraStream = null;
+    }
+    sourceVideo.srcObject = null;
+    sourceVideo.pause();
+    state.source = null;
+    state.sourceType = "";
+  }
+
+  async function flipCamera() {
+    const newFacing = state.liveMode.facingMode === "user" ? "environment" : "user";
+    stopCamera();
+    try {
+      await startCamera(newFacing);
+    } catch (err) {
+      showToast("切换摄像头失败: " + (err.message || "未知错误"));
+    }
+  }
+
+  // 双击检测 — 替换原有的 beginDrag
+  function handleCanvasPointerDown(e) {
+    const now = performance.now();
+    const point = canvasPointFromEvent(e);
+    const dt = now - state.liveMode.lastTapTime;
+    const dist = Math.hypot(point.x - state.liveMode.lastTapPoint.x, point.y - state.liveMode.lastTapPoint.y);
+
+    // 实时模式下的双击（400ms + 30px 阈值）
+    if (state.liveMode.enabled && dt < 400 && dist < 30) {
+      handleLiveDoubleTap(point);
+      state.liveMode.lastTapTime = 0;
+      e.preventDefault();
+      return;
+    }
+
+    state.liveMode.lastTapTime = now;
+    state.liveMode.lastTapPoint = point;
+
+    // 实时模式下的单击：选主体或新建
+    if (state.liveMode.enabled) {
+      const subject = subjectAtPoint(point);
+      if (subject) {
+        selectSubject(subject.id);
+        if (!state.liveMode.selectedSubjectId) {
+          state.liveMode.selectedSubjectId = subject.id;
+          liveChatBar.style.display = "block";
+          refreshControls();
+        }
+      } else {
+        // 点击空白区域新建主体并锁定
+        const s = addSubject({
+          x: clamp(point.x, 60, CANVAS_W - 60),
+          y: clamp(point.y, 70, CANVAS_H - 70),
+          autoTrack: false
+        }, true);
+        state.liveMode.selectedSubjectId = s.id;
+        liveChatBar.style.display = "block";
+        refreshControls();
+        showToast("已创建对话对象，可以开始聊天了");
+      }
+      e.preventDefault();
+      return;
+    }
+
+    // 非实时模式：沿用原有拖拽逻辑
+    beginDrag(e);
+  }
+
+  function handleLiveDoubleTap(point) {
+    const subject = subjectAtPoint(point);
+    if (subject) {
+      state.liveMode.selectedSubjectId = subject.id;
+      selectSubject(subject.id);
+      liveChatBar.style.display = "block";
+      refreshControls();
+      const name = emotions[subject.emotion]?.label || "角色";
+      showToast(`已选定「${name}」进行对话`);
+    } else {
+      // 双击空白区域也创建
+      const s = addSubject({
+        x: clamp(point.x, 60, CANVAS_W - 60),
+        y: clamp(point.y, 70, CANVAS_H - 70),
+        autoTrack: false
+      }, true);
+      state.liveMode.selectedSubjectId = s.id;
+      liveChatBar.style.display = "block";
+      refreshControls();
+      showToast("已创建对话对象，可以开始聊天了");
+    }
+  }
+
+  async function enableLiveMode() {
+    if (state.liveMode.enabled) return;
+    await ensureAudio(true);
+    try {
+      await startCamera(state.liveMode.facingMode);
+    } catch (err) {
+      showToast("无法访问摄像头: " + (err.message || "请检查权限"));
+      if (liveToggle) liveToggle.checked = false;
+      return;
+    }
+    state.liveMode.enabled = true;
+    state.liveMode.messages = [];
+    state.liveMode.selectedSubjectId = null;
+    state.liveMode.isGenerating = false;
+
+    if (!state.subjects.length) {
+      addSubject({ x: CANVAS_W * 0.5, y: CANVAS_H * 0.56, autoTrack: false }, true);
+    }
+    // 关闭所有主体的自动跟踪
+    for (const s of state.subjects) { s.autoTrack = false; }
+
+    liveIndicator.style.display = "block";
+    flipCameraBtn.style.display = "block";
+    if (liveRecordBtn) liveRecordBtn.style.display = "block";
+    liveChatBar.style.display = "none";
+    if (liveStatus) liveStatus.textContent = "摄像头已启动，双击画面选择对话对象";
+    exportBtn.disabled = true;
+    pickBtn.disabled = true;
+    if (liveChatLog) liveChatLog.innerHTML = "";
+
+    setSheetHeight(SHEET_LARGE);
+    // 切换到 live tab
+    sheetTabs.forEach(t => t.classList.toggle("active", t.dataset.tab === "live"));
+    sheetPanels.forEach(p => p.classList.toggle("active", p.dataset.panel === "live"));
+
+    refreshControls();
+    showToast("实时对话模式已开启");
+  }
+
+  function disableLiveMode() {
+    if (state.liveMode.isRecording) stopLiveRecording(true);
+    stopCamera();
+    state.liveMode.enabled = false;
+    state.liveMode.selectedSubjectId = null;
+    state.liveMode.messages = [];
+    state.liveMode.isGenerating = false;
+    if (state.liveMode.recognition) {
+      try { state.liveMode.recognition.abort(); } catch (e) { /* ignore */ }
+    }
+    state.liveMode.isListening = false;
+
+    liveIndicator.style.display = "none";
+    flipCameraBtn.style.display = "none";
+    if (liveRecordBtn) liveRecordBtn.style.display = "none";
+    if (recordingTimer) recordingTimer.style.display = "none";
+    liveChatBar.style.display = "none";
+    listeningIndicator.style.display = "none";
+    if (liveStatus) liveStatus.textContent = "";
+    if (liveChatLog) liveChatLog.innerHTML = "";
+
+    state.source = null;
+    state.sourceType = "";
+    if (emptyState) emptyState.classList.remove("hidden");
+    exportBtn.disabled = true;
+    pickBtn.disabled = false;
+    sourceVideo.srcObject = null;
+    sourceVideo.pause();
+
+    for (const s of state.subjects) { s.autoTrack = true; }
+
+    refreshControls();
+    setStatus("实时对话已关闭");
+    showToast("实时对话模式已关闭");
+  }
+
+  // ===== 对话 AI =====
+
+  function resolvePersonaDescription(personaKey) {
+    if (!personaKey) return "";
+    // 如果是内置角色名，返回完整人格描述
+    if (PERSONA_PRESETS[personaKey]) return PERSONA_PRESETS[personaKey].desc;
+    // 否则直接返回原文本（可能是自定义文本）
+    return personaKey;
+  }
+
+  function buildConversationPrompt(personaKey, topic, chatHistory) {
+    const personaDescText = resolvePersonaDescription(personaKey);
+    const emotionOptions = Object.keys(emotions)
+      .map(k => emotions[k].label)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .join("、");
+
+    const historyText = chatHistory.slice(-6).map(m =>
+      `${m.role === "user" ? "用户" : "角色"}: ${m.content}`
+    ).join("\n");
+
+    return `你是一个短视频角色的实时对话引擎。你正在扮演一个角色和用户面对面聊天。
+
+【角色人格设定】
+${personaDescText || "一个活泼可爱的小角色"}
+
+【当前话题焦点】
+${topic || "自由聊天"}
+
+【最近对话历史】
+${historyText || "（对话刚刚开始）"}
+
+【用户刚才说的话】
+{{USER_MESSAGE}}
+
+【要求】
+1. 用角色的口吻生成 1-3 句回复，每句 4-25 字
+2. 回复要自然、口语化、有角色感
+3. 给每句回复匹配一个情绪，必须是以下选项：${emotionOptions}
+4. 总字数控制在 8-60 字
+5. 可以适当追问或反问，让对话自然延续
+6. 严格只返回 JSON，不要任何解释或代码块标记
+
+返回格式：
+{"persona":"10-25字角色性格侧写","speechRate":1.0,"lines":[{"text":"回复句子","emotion":"情绪中文名"}]}`;
+  }
+
+  async function sendLiveChatMessage(userMessage) {
+    const sid = state.liveMode.selectedSubjectId;
+    if (!sid || state.liveMode.isGenerating) return;
+    const subject = state.subjects.find(s => s.id === sid);
+    if (!subject) return;
+
+    cleanupIOSDictation(); // 防止 iOS dictation 自动发送重复触发
+    state.liveMode.isGenerating = true;
+    if (liveMicBtn) { liveMicBtn.classList.add("loading"); liveMicHint.textContent = "思考中…"; }
+    if (liveSendBtn) { liveSendBtn.disabled = true; liveSendBtn.classList.add("loading"); }
+    if (liveChatInput) liveChatInput.disabled = true;
+
+    state.liveMode.messages.push({ role: "user", content: userMessage, timestamp: Date.now() });
+    updateLiveChatLog();
+
+    try {
+      const { apiKey, model } = getDeepSeekConfig();
+      if (!apiKey) {
+        showToast("请先在文字面板填写 DeepSeek API Key");
+        resetLiveInput();
+        return;
+      }
+      const personaKey = subject.persona || "盛明兰";
+      const topic = (subject.topic || (liveTopicInput ? liveTopicInput.value : "") || "").trim();
+      const prompt = buildConversationPrompt(personaKey, topic, state.liveMode.messages)
+        .replace("{{USER_MESSAGE}}", userMessage);
+
+      const content = await callDeepSeek(apiKey, model, prompt);
+      const parsed = parseDeepSeekContent(content);
+
+      if (!parsed || !parsed.lines || !parsed.lines.length) {
+        // Fallback
+        const fb = {
+          persona: (PERSONA_PRESETS[personaKey] || {}).desc || "一个友善的小助手",
+          speechRate: 1.0,
+          lines: [{ text: "嗯…这个我得想想再回你～", emotion: "疑惑" }]
+        };
+        applyConversationResponse(subject, fb);
+        state.liveMode.messages.push({ role: "assistant", content: fb.lines.map(l => l.text).join(""), timestamp: Date.now() });
+      } else {
+        applyConversationResponse(subject, parsed);
+        state.liveMode.messages.push({ role: "assistant", content: parsed.lines.map(l => l.text).join(""), timestamp: Date.now() });
+      }
+      updateLiveChatLog();
+    } catch (err) {
+      console.error("Live chat AI error:", err);
+      showToast("AI 回复失败: " + (err.message || "请检查网络"));
+    } finally {
+      resetLiveInput();
+    }
+  }
+
+  function applyConversationResponse(subject, parsed) {
+    const texts = parsed.lines.map(l => l.text);
+    const emotionsList = parsed.lines.map(l => l.emotionKey || subject.emotion || "happy");
+    subject.dialogueText = texts.join("\n");
+    subject.dialogueLines = texts;
+    subject.lineEmotions = emotionsList;
+    resetDialogueVoiceState(subject);
+    subject.dialogueStartedAt = performance.now();
+    if (parsed.speechRate && Number.isFinite(Number(parsed.speechRate))) {
+      subject.speechRate = Number(parsed.speechRate);
+    }
+    if (parsed.persona && !subject.persona) {
+      subject.persona = parsed.persona;
+    }
+  }
+
+  function resetLiveInput() {
+    state.liveMode.isGenerating = false;
+    _isHoldingMic = false;
+    cleanupIOSDictation();
+    if (liveMicBtn) { liveMicBtn.classList.remove("loading", "listening"); liveMicHint.textContent = "按住 说话"; }
+    if (liveChatInput) { liveChatInput.value = ""; liveChatInput.disabled = false; }
+    if (liveSendBtn) { liveSendBtn.disabled = false; liveSendBtn.classList.remove("loading"); }
+  }
+
+  function updateLiveChatLog() {
+    if (!liveChatLog) return;
+    const recent = state.liveMode.messages.slice(-10);
+    liveChatLog.innerHTML = recent.map(m => {
+      const who = m.role === "user" ? "👤 你" : "🤖 角色";
+      return `<div style="margin-bottom:3px"><b>${who}:</b> ${escapeHtml(m.content)}</div>`;
+    }).join("");
+    liveChatLog.scrollTop = liveChatLog.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ===== 语音识别（渐进增强，iOS 不可用时回退键盘 dictation）=====
+
+  function initSpeechRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return false;
+    const rec = new SR();
+    rec.lang = "zh-CN";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      const text = (e.results[0][0].transcript || "").trim();
+      state.liveMode.isListening = false;
+      listeningIndicator.style.display = "none";
+      liveMicBtn.classList.remove("listening");
+      if (text) {
+        if (liveChatInput) liveChatInput.value = text;
+        liveMicHint.textContent = "识别成功，发送中…";
+        sendLiveChatMessage(text);
+      } else {
+        liveMicHint.textContent = "没听清，再试一次";
+      }
+    };
+    rec.onerror = (e) => {
+      state.liveMode.isListening = false;
+      listeningIndicator.style.display = "none";
+      liveMicBtn.classList.remove("listening");
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        showToast("语音识别不可用，点 ⌨ 切换文字输入");
+      }
+      liveMicHint.textContent = e.error === "no-speech" ? "没听到声音，再试一次" : "按住 说话";
+    };
+    rec.onend = () => {
+      state.liveMode.isListening = false;
+      listeningIndicator.style.display = "none";
+      if (_isHoldingMic) {
+        liveMicHint.textContent = "正在识别…";
+      }
+    };
+    state.liveMode.recognition = rec;
+    return true;
+  }
+
+  function startListening() {
+    if (!state.liveMode.recognition) return;
+    if (state.liveMode.isListening) {
+      state.liveMode.recognition.stop();
+      return;
+    }
+    state.liveMode.isListening = true;
+    listeningIndicator.style.display = "block";
+    try { state.liveMode.recognition.start(); } catch (e) { /* ignore */ }
+  }
+
+  // ===== 对话录制 =====
+
+  async function startLiveRecording() {
+    if (!state.liveMode.enabled || state.liveMode.isRecording) return;
+    if (!canvas.captureStream || !window.MediaRecorder) {
+      showToast("当前浏览器不支持录制");
+      return;
+    }
+
+    // 切换到 gibberish 模式以便捕获角色声音（TTS 走系统输出，无法用 Web Audio 捕获）
+    for (const s of state.subjects) {
+      s._prevVoiceMode = s.voiceMode;
+      s.voiceMode = "gibberish";
+    }
+
+    // 确保音频上下文活跃
+    await ensureAudio(false);
+    if (!audioDestination || !audioDestination.stream) {
+      showToast("音频系统未就绪，请重试");
+      return;
+    }
+
+    // 1. Canvas 视频流
+    const videoStream = canvas.captureStream(30);
+    const videoTracks = videoStream.getVideoTracks();
+
+    // 2. 麦克风音频流（用户声音）
+    let micStream = null;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      console.warn("Mic not available:", e);
+    }
+    const micTracks = micStream ? micStream.getAudioTracks() : [];
+
+    // 3. 角色声音（来自 audioDestination — gibberish 音频）
+    const gibberishTracks = audioDestination.stream.getAudioTracks();
+
+    // 合并所有轨道
+    const allTracks = [...videoTracks, ...micTracks, ...gibberishTracks];
+    const mergedStream = new MediaStream(allTracks);
+
+    // 选择编码格式
+    let mimeType = "";
+    for (const m of ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"]) {
+      if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
+    }
+
+    const recorder = new MediaRecorder(mergedStream, mimeType ? { mimeType } : {});
+    state.liveMode.mediaRecorder = recorder;
+    state.liveMode.recordedChunks = [];
+    state.liveMode.recordStream = mergedStream;
+    state.liveMode.isRecording = true;
+    state.liveMode.recordStartTime = Date.now();
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) state.liveMode.recordedChunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      saveRecordedVideo();
+    };
+    recorder.onerror = (e) => {
+      console.error("Recorder error:", e);
+      stopLiveRecording(true);
+    };
+
+    recorder.start(500);
+
+    // UI
+    if (liveRecordBtn) { liveRecordBtn.classList.add("recording"); liveRecordBtn.textContent = "⏹"; }
+    if (recordingTimer) { recordingTimer.style.display = "block"; }
+    updateRecordingTimer();
+    state.liveMode.recordTimerInterval = setInterval(updateRecordingTimer, 500);
+
+    showToast("开始录制 — 用户声音+角色声音+画面表情");
+  }
+
+  function stopLiveRecording(silent = false) {
+    if (!state.liveMode.isRecording) return;
+
+    if (state.liveMode.mediaRecorder && state.liveMode.mediaRecorder.state !== "inactive") {
+      state.liveMode.mediaRecorder.stop();
+    }
+
+    // 释放麦克风流
+    if (state.liveMode.recordStream) {
+      state.liveMode.recordStream.getTracks().forEach(t => t.stop());
+      state.liveMode.recordStream = null;
+    }
+
+    // 恢复原来的发音模式
+    for (const s of state.subjects) {
+      if (s._prevVoiceMode) { s.voiceMode = s._prevVoiceMode; delete s._prevVoiceMode; }
+    }
+
+    state.liveMode.isRecording = false;
+    if (state.liveMode.recordTimerInterval) {
+      clearInterval(state.liveMode.recordTimerInterval);
+      state.liveMode.recordTimerInterval = null;
+    }
+
+    // UI
+    if (liveRecordBtn) { liveRecordBtn.classList.remove("recording"); liveRecordBtn.textContent = "⏺"; }
+    if (recordingTimer) { recordingTimer.style.display = "none"; }
+
+    if (!silent) showToast("录制完成，正在保存…");
+  }
+
+  function updateRecordingTimer() {
+    if (!state.liveMode.isRecording || !recordingTimer) return;
+    const elapsed = Math.floor((Date.now() - state.liveMode.recordStartTime) / 1000);
+    const min = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const sec = String(elapsed % 60).padStart(2, "0");
+    recordingTimer.textContent = `● ${min}:${sec}`;
+  }
+
+  function saveRecordedVideo() {
+    const chunks = state.liveMode.recordedChunks;
+    if (!chunks.length) {
+      showToast("录制内容为空");
+      return;
+    }
+    const mimeType = state.liveMode.mediaRecorder?.mimeType || "video/webm";
+    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+    const blob = new Blob(chunks, { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `对话记录_${new Date().toISOString().slice(0,10)}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    state.liveMode.recordedChunks = [];
+    showToast("视频已保存");
+  }
+
   function pickPhrase(key = "happy") {
     const list = emotions[key]?.phrases || emotions.happy.phrases;
     return list[Math.floor(Math.random() * list.length)];
@@ -2126,7 +2815,7 @@ ${topic}
       dialogueText: basePhrase,
       dialogueLines: [basePhrase],
       lineEmotions: [baseEmotion],
-      persona: "",
+      persona: "盛明兰",
       topic: "",
       lineSpeed: 3.5,
       dialogueStartedAt: performance.now(),
@@ -2205,7 +2894,6 @@ ${topic}
     fillToggle.disabled = !enabled;
     textToggle.disabled = !enabled;
     captionInput.disabled = !enabled;
-    personaInput.disabled = !enabled;
     topicInput.disabled = !enabled;
     aiGenBtn.disabled = !enabled;
     speedSlider.disabled = !enabled;
@@ -2215,9 +2903,9 @@ ${topic}
     voiceToggle.disabled = !enabled;
     previewVoiceBtn.disabled = !enabled;
     shuffleBtn.disabled = !enabled;
-    autoGenBtn.disabled = !enabled;
 
     buildSubjectButtons();
+    buildPersonaChips();
     buildEmotionButtons();
     buildFaceStyleButtons();
     buildLegButtons();
@@ -2228,10 +2916,9 @@ ${topic}
 
     if (!subject) {
       captionInput.value = "";
-      personaInput.value = "";
+      if (personaDesc) personaDesc.textContent = "";
       lineEmotionPanel.innerHTML = "";
       if (topicSubjectTag) topicSubjectTag.textContent = "";
-      if (personaSubjectTag) personaSubjectTag.textContent = "";
       if (speedSubjectTag) speedSubjectTag.textContent = "";
       if (speechRateTag) speechRateTag.textContent = "";
       if (voicePitchTag) voicePitchTag.textContent = "";
@@ -2241,14 +2928,12 @@ ${topic}
     const idx = selectedSubjectIndex() + 1;
     const total = state.subjects.length;
     if (topicSubjectTag) topicSubjectTag.textContent = `${idx}/${total} 号主体`;
-    if (personaSubjectTag) personaSubjectTag.textContent = `${idx}/${total} 号主体`;
     if (speedSubjectTag) {
       const liveSpeed = Number(speedSlider.value || subject.lineSpeed || 3.5).toFixed(1);
       speedSubjectTag.textContent = `${liveSpeed}×`;
     }
 
     captionInput.value = subject.dialogueText || "";
-    personaInput.value = subject.persona || "";
     topicInput.value = subject.topic || "";
     bodySlider.value = Math.round(subject.bodySize);
     faceSlider.value = Math.round(subject.faceScale * 100);
@@ -2266,6 +2951,20 @@ ${topic}
     legToggle.checked = subject.showLegs === true;
     fillToggle.checked = subject.showFill !== false;
     textToggle.checked = subject.showText !== false;
+
+    // 同步实时对话面板
+    if (liveToggle) liveToggle.checked = state.liveMode.enabled;
+    if (liveTopicInput && !liveTopicInput.dataset.userEdited) {
+      liveTopicInput.value = subject.topic || "";
+    }
+    if (liveStatus && state.liveMode.enabled) {
+      const selSubj = state.liveMode.selectedSubjectId
+        ? state.subjects.find(s => s.id === state.liveMode.selectedSubjectId)
+        : null;
+      liveStatus.textContent = selSubj
+        ? `对话对象：${emotions[selSubj.emotion]?.label || "—"} / 共 ${state.liveMode.messages.length} 条消息`
+        : "双击画面选择对话对象";
+    }
   }
 
   function buildSubjectButtons() {
@@ -2452,6 +3151,44 @@ ${topic}
       });
       voiceModeList.appendChild(btn);
     });
+  }
+
+  function buildPersonaChips() {
+    if (!personaChipList) return;
+    personaChipList.innerHTML = "";
+    const subject = selectedSubject();
+    const currentKey = subject ? subject.persona : "盛明兰";
+
+    Object.entries(PERSONA_PRESETS).forEach(([key, p]) => {
+      const btn = document.createElement("button");
+      btn.className = `chip${currentKey === key ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = p.label;
+      btn.title = p.desc;
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        target.persona = key;
+        // 自动匹配推荐音色和默认情绪
+        if (p.voice) target.voiceType = p.voice;
+        if (p.emotion) {
+          target.emotion = p.emotion;
+          setAllLineEmotions(target, p.emotion);
+        }
+        resetDialogueVoiceState(target);
+        target.dialogueStartedAt = performance.now();
+        refreshControls();
+        showToast(`已设定「${p.label}」`);
+      });
+      personaChipList.appendChild(btn);
+    });
+
+    // 显示当前人格描述
+    if (personaDesc && PERSONA_PRESETS[currentKey]) {
+      personaDesc.textContent = PERSONA_PRESETS[currentKey].desc;
+    } else if (personaDesc) {
+      personaDesc.textContent = currentKey || "";
+    }
   }
 
   function buildLineEmotionPanel() {
@@ -2716,6 +3453,20 @@ ${topic}
 
   function render(now = performance.now()) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    // 实时模式：摄像头断流时提示
+    if (state.liveMode.enabled && !state.source) {
+      drawFallbackBackground(now);
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 26px -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("📷", CANVAS_W / 2, CANVAS_H / 2 - 14);
+      ctx.font = "15px -apple-system, sans-serif";
+      ctx.fillText("摄像头未就绪", CANVAS_W / 2, CANVAS_H / 2 + 22);
+      requestAnimationFrame(render);
+      return;
+    }
     if (state.source) {
       drawMedia(ctx, CANVAS_W, CANVAS_H);
       ctx.fillStyle = "rgba(0,0,0,0.03)";
@@ -2769,6 +3520,18 @@ ${topic}
     }
     if (subject.showText !== false) {
       drawBubble(subject, mood, subject.x, bodyY, bodyR, bubbleText);
+    }
+    // 实时对话模式：锁定主体画蓝色虚线高亮环
+    if (state.liveMode.enabled && subject.id === state.liveMode.selectedSubjectId) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(10,132,255,0.55)";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([8, 4]);
+      ctx.beginPath();
+      ctx.ellipse(subject.x, subject.y - bodyR * 0.06, bodyR * 0.78, bodyR * 0.92, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -3814,6 +4577,7 @@ ${topic}
   }
 
   async function exportVideo() {
+    if (state.liveMode.enabled) { showToast("实时对话模式下不可导出，请先关闭实时模式"); return; }
     if (!state.source || state.exporting) return;
     if (!canvas.captureStream || !window.MediaRecorder) {
       showToast("当前浏览器不支持导出，请换 Chrome 或新版 Safari。");
@@ -3968,20 +4732,7 @@ ${topic}
     captionInput.value = subject.dialogueText;
     buildLineEmotionPanel();
   });
-  autoGenBtn.addEventListener("click", () => {
-    const subject = selectedSubject();
-    if (!subject) return;
-    subject.persona = personaInput.value.trim();
-    const lines = generateDialogueLines(subject.persona, subject.emotion);
-    subject.dialogueText = lines.join("\n");
-    subject.dialogueLines = lines;
-    subject.lineEmotions = lines.map(() => subject.emotion);
-    resetDialogueVoiceState(subject);
-    subject.dialogueStartedAt = performance.now();
-    captionInput.value = subject.dialogueText;
-    buildLineEmotionPanel();
-    showToast("已按想法和特点生成多句台词");
-  });
+  // autoGenBtn removed — persona now set via Subject tab chips
   captionInput.addEventListener("input", () => {
     const subject = selectedSubject();
     if (!subject) return;
@@ -3992,11 +4743,6 @@ ${topic}
     subject.dialogueStartedAt = performance.now();
     buildLineEmotionPanel();
   });
-  personaInput.addEventListener("input", () => {
-    const subject = selectedSubject();
-    if (!subject) return;
-    subject.persona = personaInput.value;
-  });
   topicInput.addEventListener("input", () => {
     const subject = selectedSubject();
     if (!subject) return;
@@ -4006,7 +4752,7 @@ ${topic}
     const subject = selectedSubject();
     if (!subject) return;
     subject.topic = topicInput.value.trim();
-    subject.persona = personaInput.value.trim();
+    // persona 已在主体面板通过角色芯片选定
     await generateDialogueWithAI(subject);
   });
   saveApiKeyBtn.addEventListener("click", () => {
@@ -4084,6 +4830,191 @@ ${topic}
     subject.voiceEnabled = voiceToggle.checked;
   });
   previewVoiceBtn.addEventListener("click", previewSubjectVoice);
+
+  // ===== 实时对话模式事件 =====
+  const liveToggle = document.getElementById("liveToggle");
+  const liveMicBtn = document.getElementById("liveMicBtn");
+  const liveMicHint = document.getElementById("liveMicHint");
+  const liveTextRow = document.getElementById("liveTextRow");
+  const liveChatInput = document.getElementById("liveChatInput");
+  const liveSendBtn = document.getElementById("liveSendBtn");
+  const liveKeyboardBtn = document.getElementById("liveKeyboardBtn");
+  const liveChatLog = document.getElementById("liveChatLog");
+  const liveTopicInput = document.getElementById("liveTopicInput");
+  const liveStatus = document.getElementById("liveStatus");
+  const liveChatBar = document.getElementById("liveChatBar");
+  const liveIndicator = document.getElementById("liveIndicator");
+  const flipCameraBtn = document.getElementById("flipCameraBtn");
+  const liveRecordBtn = document.getElementById("liveRecordBtn");
+  const recordingTimer = document.getElementById("recordingTimer");
+  const listeningIndicator = document.getElementById("listeningIndicator");
+  const clearChatBtn = document.getElementById("clearChatBtn");
+
+  // 初始化语音识别（Chrome/Android 可用，iOS 回退键盘 dictation）
+  const hasSR = initSpeechRecognition();
+
+  if (liveToggle) {
+    liveToggle.addEventListener("change", async () => {
+      if (liveToggle.checked) {
+        await enableLiveMode();
+      } else {
+        disableLiveMode();
+      }
+    });
+  }
+
+  // ===== 按住说话核心逻辑 =====
+  let _voiceDebounceTimer = null;
+  let _isHoldingMic = false;
+
+  let _iosDictationHandler = null;
+
+  function triggerVoiceInput() {
+    if (!state.liveMode.enabled || !state.liveMode.selectedSubjectId) return;
+    if (state.liveMode.isGenerating) return;
+
+    if (hasSR && state.liveMode.recognition) {
+      // Chrome/Android：直接用 Web Speech API，真正的语音输入
+      _isHoldingMic = true;
+      liveMicBtn.classList.add("listening");
+      liveMicHint.textContent = "正在听… 松开发送";
+      startListening();
+    } else {
+      // iOS：没有 SR API，显示文字输入框，利用 iOS 键盘自带 dictation
+      if (liveTextRow) liveTextRow.style.display = "block";
+      if (liveChatInput) { liveChatInput.value = ""; liveChatInput.focus(); }
+      if (liveMicHint) liveMicHint.textContent = "请点键盘🎙️键说话";
+      // 移除旧监听，避免重复绑定
+      if (_iosDictationHandler) {
+        liveChatInput.removeEventListener("input", _iosDictationHandler);
+      }
+      // 检测文字变化后自动发送（1.5s 停顿 = 说完了）
+      _iosDictationHandler = function () {
+        clearTimeout(_voiceDebounceTimer);
+        const txt = liveChatInput.value.trim();
+        if (txt) {
+          _voiceDebounceTimer = setTimeout(() => {
+            if (liveChatInput.value.trim() === txt) {
+              cleanupIOSDictation();
+              sendLiveChatMessage(txt);
+            }
+          }, 1500);
+        }
+      };
+      liveChatInput.addEventListener("input", _iosDictationHandler);
+    }
+  }
+
+  function cleanupIOSDictation() {
+    clearTimeout(_voiceDebounceTimer);
+    if (_iosDictationHandler && liveChatInput) {
+      liveChatInput.removeEventListener("input", _iosDictationHandler);
+      _iosDictationHandler = null;
+    }
+  }
+
+  function releaseVoiceInput() {
+    if (!_isHoldingMic) return;
+    _isHoldingMic = false;
+    liveMicBtn.classList.remove("listening");
+    // SR 模式：不主动停止识别，让它自然结束拿到完整句子
+    // iOS 回退模式：文字已在 triggerVoiceInput 中 focus，用户 dictation 完成后自动发送
+    if (!hasSR) {
+      liveMicHint.textContent = "说完后自动发送…";
+    } else {
+      liveMicHint.textContent = "正在识别…";
+    }
+  }
+
+  if (liveMicBtn) {
+    // 按住开始说话
+    liveMicBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (state.liveMode.isGenerating) return;
+      triggerVoiceInput();
+    });
+
+    // 松开发送
+    liveMicBtn.addEventListener("pointerup", (e) => {
+      e.preventDefault();
+      releaseVoiceInput();
+    });
+
+    liveMicBtn.addEventListener("pointerleave", (e) => {
+      releaseVoiceInput();
+    });
+
+    // 防止 touch 事件干扰
+    liveMicBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (state.liveMode.isGenerating) return;
+      triggerVoiceInput();
+    });
+    liveMicBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      releaseVoiceInput();
+    });
+  }
+
+  // 文字输入（备用，点键盘按钮切换）
+  if (liveKeyboardBtn) {
+    liveKeyboardBtn.addEventListener("click", () => {
+      const visible = liveTextRow.style.display !== "none";
+      liveTextRow.style.display = visible ? "none" : "block";
+      liveKeyboardBtn.textContent = visible ? "⌨" : "🎤";
+      if (!visible) {
+        liveChatInput.focus();
+        liveMicHint.textContent = "文字输入模式";
+      } else {
+        liveMicHint.textContent = "按住 说话";
+      }
+    });
+  }
+
+  if (liveSendBtn) {
+    liveSendBtn.addEventListener("click", () => {
+      const text = (liveChatInput ? liveChatInput.value : "").trim();
+      if (!text) return;
+      sendLiveChatMessage(text);
+    });
+  }
+  if (liveChatInput) {
+    liveChatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const text = liveChatInput.value.trim();
+        if (!text) return;
+        sendLiveChatMessage(text);
+      }
+    });
+  }
+
+  if (flipCameraBtn) {
+    flipCameraBtn.addEventListener("click", flipCamera);
+  }
+  if (liveRecordBtn) {
+    liveRecordBtn.addEventListener("click", () => {
+      if (state.liveMode.isRecording) {
+        stopLiveRecording();
+      } else {
+        startLiveRecording();
+      }
+    });
+  }
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener("click", () => {
+      state.liveMode.messages = [];
+      if (liveChatLog) liveChatLog.innerHTML = "";
+      showToast("对话记录已清空");
+    });
+  }
+  if (liveTopicInput) {
+    liveTopicInput.addEventListener("input", () => {
+      liveTopicInput.dataset.userEdited = "1";
+      const subject = selectedSubject();
+      if (subject) subject.topic = liveTopicInput.value;
+    });
+  }
+
   followToggle.addEventListener("change", () => {
     const subject = selectedSubject();
     if (!subject) return;
@@ -4121,7 +5052,7 @@ ${topic}
     loadFile(event.dataTransfer.files[0]);
   });
 
-  canvas.addEventListener("pointerdown", beginDrag);
+  canvas.addEventListener("pointerdown", handleCanvasPointerDown);
   window.addEventListener("pointermove", moveDrag);
   window.addEventListener("pointerup", endDrag);
   initPanelResize();
