@@ -415,7 +415,7 @@ canvas { display: block; width: 100%; height: 100%; }
 /* Emotion Grid */
 .emotion-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 .emotion-grid .chip {
@@ -447,6 +447,39 @@ canvas { display: block; width: 100%; height: 100%; }
   border-color: var(--primary);
   background: rgba(255,255,255,0.08);
 }
+
+.api-key-field {
+  min-height: 42px;
+  font-size: 13px;
+  font-family: "SF Mono", "Menlo", monospace;
+  letter-spacing: 0.02em;
+}
+.api-model-select {
+  min-height: 42px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.api-model-select option { background: #1c1c1e; color: #fff; }
+.ai-btn {
+  background: linear-gradient(135deg, #b89cff, #6ec8ff);
+  color: #17130f;
+  font-weight: 800;
+  position: relative;
+}
+.ai-btn.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.ai-btn.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  border-top-color: #17130f;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* iOS Toggle Switch */
 .ios-toggle, .ios-list-item {
@@ -701,28 +734,67 @@ input[type="range"]::-moz-range-thumb {
         </div>
       </div>
       <div class="sheet-panel" data-panel="text">
-        <div class="panel-title"><span>气泡文字</span></div>
+        <div class="panel-title">
+          <span>话题（DeepSeek）</span>
+          <span class="panel-actions" id="topicSubjectTag" style="font-size:11px;color:var(--text-tertiary)"></span>
+        </div>
+        <div class="row">
+          <textarea class="field" id="topicInput" rows="2" placeholder="输入话题，如：今天下雨了"></textarea>
+          <button class="icon-btn ai-btn" id="aiGenBtn" title="AI 生成台词+情绪">✦</button>
+        </div>
+        <div class="panel-title" style="margin-top:10px"><span>气泡文字</span></div>
         <div class="row">
           <textarea class="field" id="captionInput" rows="3" placeholder="气泡文字，每行一句"></textarea>
           <button class="icon-btn" id="shuffleBtn" title="换一句">↻</button>
         </div>
+        <div class="panel-title" style="margin-top:10px">
+          <span>人格设定（每个主体独立）</span>
+          <span class="panel-actions" id="personaSubjectTag" style="font-size:11px;color:var(--text-tertiary)"></span>
+        </div>
         <div class="row">
           <textarea class="field" id="personaInput" rows="2" placeholder="输入这个小人的想法、特点、口癖"></textarea>
-          <button class="icon-btn" id="autoGenBtn" title="自动生成">✦</button>
+          <button class="icon-btn" id="autoGenBtn" title="本地模板生成">↻</button>
         </div>
         <div class="panel-title" style="margin-top:12px"><span>气泡样式</span></div>
         <div class="row scroll" id="bubbleList"></div>
         <div class="ios-slider-group">
           <div class="ios-slider-row"><span class="ios-slider-label">文字大小</span><input id="textSlider" type="range" min="18" max="42" value="28"></div>
-          <div class="ios-slider-row"><span class="ios-slider-label">台词速度</span><input id="speedSlider" type="range" min="0.8" max="4.5" step="0.1" value="1.8"></div>
+          <div class="ios-slider-row">
+            <span class="ios-slider-label">台词速度</span>
+            <input id="speedSlider" type="range" min="0.8" max="5.0" step="0.1" value="3.5">
+            <span class="panel-actions" id="speedSubjectTag" style="font-size:11px;color:var(--text-tertiary);min-width:48px;text-align:right"></span>
+          </div>
         </div>
         <label class="ios-list-item"><span>显示文字气泡</span><input id="textToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
+        <div class="panel-title" style="margin-top:12px"><span>DeepSeek API</span></div>
+        <div class="row">
+          <input type="password" class="field api-key-field" id="apiKeyInput" placeholder="sk-...（保存到本地）">
+          <button class="icon-btn" id="saveApiKeyBtn" title="保存">✓</button>
+        </div>
+        <div class="row">
+          <select class="field api-model-select" id="apiModelSelect">
+            <option value="deepseek-chat">deepseek-chat (V3)</option>
+            <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+          </select>
+        </div>
       </div>
       <div class="sheet-panel" data-panel="voice">
-        <div class="panel-title"><span>说话音色</span></div>
+        <div class="panel-title"><span>发音方式</span></div>
+        <div class="row scroll" id="voiceModeList"></div>
+        <div class="panel-title" style="margin-top:8px"><span>说话音色</span></div>
         <div class="row scroll" id="voiceList"></div>
         <div class="ios-slider-group">
           <div class="ios-slider-row"><span class="ios-slider-label">音量</span><input id="voiceVolumeSlider" type="range" min="0" max="100" value="58"></div>
+          <div class="ios-slider-row">
+            <span class="ios-slider-label">音高</span>
+            <input id="voicePitchSlider" type="range" min="0.3" max="2.0" step="0.01" value="1.0">
+            <span class="panel-actions" id="voicePitchTag" style="font-size:11px;color:var(--text-tertiary);min-width:48px;text-align:right"></span>
+          </div>
+          <div class="ios-slider-row">
+            <span class="ios-slider-label">说话快慢</span>
+            <input id="speechRateSlider" type="range" min="0.5" max="2.0" step="0.05" value="1.0">
+            <span class="panel-actions" id="speechRateTag" style="font-size:11px;color:var(--text-tertiary);min-width:48px;text-align:right"></span>
+          </div>
         </div>
         <div class="row">
           <label class="ios-list-item" style="flex:1"><span>开启声音</span><input id="voiceToggle" type="checkbox" checked><span class="toggle-track"><span class="toggle-knob"></span></span></label>
@@ -774,35 +846,65 @@ input[type="range"]::-moz-range-thumb {
   };
 
   const VOICE_TYPES = {
-    minion: {
-      label: "小黄人感",
-      base: 620,
-      spread: 240,
+    mandarin: {
+      label: "普通话",
+      base: 240,
+      spread: 80,
+      wave: "sine",
+      syllables: [1, 1.18, 1.08, 1.22, 1.04, 1.16],
+      formant: 1200,
+      noise: 0.012,
+      chirp: 0.04
+    },
+    northeast: {
+      label: "东北话",
+      base: 220,
+      spread: 95,
       wave: "sawtooth",
-      syllables: [1, 1.26, 1.52, 1.18, 1.72, 1.34],
-      formant: 1780,
-      noise: 0.028,
-      chirp: 0.26
-    },
-    sponge: {
-      label: "海绵宝宝感",
-      base: 520,
-      spread: 210,
-      wave: "square",
-      syllables: [1, 1.42, 1.18, 1.58, 1.26, 1.75],
-      formant: 2320,
+      syllables: [1, 1.12, 1.32, 0.96, 1.22, 1.18],
+      formant: 1180,
       noise: 0.022,
-      chirp: 0.34
+      chirp: 0.18
     },
-    patrick: {
-      label: "派大星感",
-      base: 190,
-      spread: 85,
+    yujie: {
+      label: "御姐音",
+      base: 195,
+      spread: 70,
+      wave: "sine",
+      syllables: [1, 0.94, 1.06, 0.96, 1.08, 0.98],
+      formant: 980,
+      noise: 0.012,
+      chirp: -0.04
+    },
+    child: {
+      label: "小孩音",
+      base: 320,
+      spread: 110,
+      wave: "sine",
+      syllables: [1, 1.22, 1.18, 1.28, 1.12, 1.24],
+      formant: 1620,
+      noise: 0.016,
+      chirp: 0.22
+    },
+    villain: {
+      label: "坏人音",
+      base: 165,
+      spread: 60,
+      wave: "sawtooth",
+      syllables: [1, 0.88, 1.04, 0.92, 1.06, 0.94],
+      formant: 720,
+      noise: 0.026,
+      chirp: -0.16
+    },
+    male: {
+      label: "男声",
+      base: 110,
+      spread: 45,
       wave: "triangle",
-      syllables: [1, 0.84, 0.98, 0.72, 1.06],
-      formant: 690,
-      noise: 0.06,
-      chirp: -0.12
+      syllables: [1, 0.92, 1.04, 0.88, 1.02, 0.94],
+      formant: 560,
+      noise: 0.014,
+      chirp: -0.08
     }
   };
 
@@ -816,7 +918,52 @@ input[type="range"]::-moz-range-thumb {
     smug: { pitch: 0.98, rate: 0.96, gain: 0.9, jitter: 0.03, chirp: -0.05 },
     sleepy: { pitch: 0.68, rate: 0.64, gain: 0.62, jitter: 0.03, chirp: -0.16 },
     excited: { pitch: 1.26, rate: 1.52, gain: 1.12, jitter: 0.08, chirp: 0.22 },
-    confused: { pitch: 0.96, rate: 0.86, gain: 0.86, jitter: 0.12, chirp: 0.02 }
+    confused: { pitch: 0.96, rate: 0.86, gain: 0.86, jitter: 0.12, chirp: 0.02 },
+    scared: { pitch: 1.18, rate: 1.32, gain: 0.92, jitter: 0.16, chirp: 0.28 },
+    nervous: { pitch: 1.08, rate: 1.18, gain: 0.82, jitter: 0.18, chirp: -0.06 },
+    embarrassed: { pitch: 0.94, rate: 0.84, gain: 0.74, jitter: 0.08, chirp: -0.04 },
+    bored: { pitch: 0.78, rate: 0.7, gain: 0.7, jitter: 0.04, chirp: -0.1 },
+    expecting: { pitch: 1.18, rate: 1.22, gain: 1.04, jitter: 0.06, chirp: 0.2 },
+    moved: { pitch: 0.92, rate: 0.78, gain: 0.84, jitter: 0.05, chirp: -0.12 },
+    jealous: { pitch: 0.9, rate: 1.18, gain: 1.06, jitter: 0.12, chirp: -0.08 },
+    mocking: { pitch: 1.02, rate: 1.34, gain: 1.08, jitter: 0.1, chirp: 0.16 },
+    worried: { pitch: 0.88, rate: 0.82, gain: 0.78, jitter: 0.06, chirp: -0.14 },
+    playful: { pitch: 1.16, rate: 1.28, gain: 1.02, jitter: 0.08, chirp: 0.18 },
+    pleading: { pitch: 1.22, rate: 0.86, gain: 0.76, jitter: 0.06, chirp: 0.24 },
+    complaining: { pitch: 0.86, rate: 1.06, gain: 0.92, jitter: 0.1, chirp: -0.1 },
+    curious: { pitch: 1.14, rate: 1.12, gain: 0.94, jitter: 0.05, chirp: 0.14 },
+    proud: { pitch: 1.08, rate: 1.16, gain: 1.08, jitter: 0.05, chirp: 0.16 },
+    cool: { pitch: 0.86, rate: 0.92, gain: 0.88, jitter: 0.04, chirp: -0.08 }
+  };
+
+  // TTS 模式下的情绪 -> 音调（0.1 ~ 2.0 范围，TTS 引擎接受）
+  const EMOTION_PITCH_TTS = {
+    happy: 1.15, surprise: 1.3, angry: 0.85, rage: 0.7,
+    sad: 0.8, shy: 1.05, smug: 0.95, sleepy: 0.7,
+    excited: 1.25, confused: 1.0, scared: 1.2, nervous: 1.1,
+    embarrassed: 0.9, bored: 0.8, expecting: 1.15, moved: 0.95,
+    jealous: 1.0, mocking: 1.1, worried: 0.9, playful: 1.2,
+    pleading: 1.3, complaining: 0.9, curious: 1.1, proud: 1.1,
+    cool: 0.8
+  };
+
+  // voiceType 在 TTS 模式下的基音（叠加情绪音调）
+  const VOICE_BASE_PITCH_TTS = {
+    mandarin: 1.0,
+    northeast: 0.78,   // 豪爽低沉
+    yujie: 0.62,       // 成熟御姐
+    child: 1.90,       // 小孩尖细
+    villain: 0.48,     // 坏人压迫感
+    male: 0.40         // 男声最低沉
+  };
+  // voiceType 在 TTS 模式下的基础语速（再乘 AI/persona 生成的 speechRate）
+  const VOICE_BASE_RATE_TTS = {
+    mandarin: 1.0,
+    northeast: 1.22,   // 东北话爽快
+    yujie: 0.84,       // 御姐从容
+    child: 1.18,       // 小孩连珠炮
+    villain: 0.78,     // 坏人慢条斯理
+    male: 0.92         // 男声稳健
   };
 
   const emotions = {
@@ -919,8 +1066,399 @@ input[type="range"]::-moz-range-thumb {
       brow: "tilt",
       arm: "spread",
       bubble: "#fff3e3"
+    },
+    scared: {
+      label: "害怕",
+      swatch: "#a0c4ff",
+      phrases: ["救命啊，好吓人", "我好怕，你陪我", "这个声音好可怕"],
+      mouth: "o",
+      eye: "wide",
+      brow: "up",
+      arm: "hug",
+      bubble: "#dfe7ff"
+    },
+    nervous: {
+      label: "紧张",
+      swatch: "#ffc6ff",
+      phrases: ["我有点慌", "感觉要出事", "手心在冒汗"],
+      mouth: "grit",
+      eye: "cross",
+      brow: "tilt",
+      arm: "hug",
+      bubble: "#fbe2f5"
+    },
+    embarrassed: {
+      label: "尴尬",
+      swatch: "#ffb3a7",
+      phrases: ["脚趾能抠出三室一厅", "假装我不存在", "我能不能钻进地缝"],
+      mouth: "smirk",
+      eye: "half",
+      brow: "tilt",
+      arm: "hug",
+      bubble: "#ffe2dd"
+    },
+    bored: {
+      label: "无聊",
+      swatch: "#bdb2ff",
+      phrases: ["啊…好无聊啊", "有什么事可做吗", "我已经坐化了"],
+      mouth: "yawn",
+      eye: "sleepy",
+      brow: "flat",
+      arm: "hug",
+      bubble: "#e2dffd"
+    },
+    expecting: {
+      label: "期待",
+      swatch: "#caffc1",
+      phrases: ["我好期待啊", "快到快到", "我已经迫不及待"],
+      mouth: "smile",
+      eye: "spark",
+      brow: "up",
+      arm: "wave",
+      bubble: "#e6fbe2"
+    },
+    moved: {
+      label: "感动",
+      swatch: "#ffd6a5",
+      phrases: ["谢谢你", "我眼泪要掉下来了", "你真的好暖"],
+      mouth: "smile",
+      eye: "teary",
+      brow: "soft",
+      arm: "hug",
+      bubble: "#ffeed5"
+    },
+    jealous: {
+      label: "嫉妒",
+      swatch: "#9d8df1",
+      phrases: ["凭什么啊", "我也可以的", "哼，我才不稀罕"],
+      mouth: "grit",
+      eye: "angry",
+      brow: "angry",
+      arm: "point",
+      bubble: "#e0dbfb"
+    },
+    mocking: {
+      label: "嘲笑",
+      swatch: "#fcb1a6",
+      phrases: ["就这？", "哈哈哈笑死我了", "你不是认真的吧"],
+      mouth: "shout",
+      eye: "wink",
+      brow: "lift",
+      arm: "point",
+      bubble: "#ffe2dd"
+    },
+    worried: {
+      label: "担心",
+      swatch: "#8ec5fc",
+      phrases: ["你没事吧", "我有点担心你", "希望你一切顺利"],
+      mouth: "sad",
+      eye: "teary",
+      brow: "sad",
+      arm: "hug",
+      bubble: "#dfe9fc"
+    },
+    playful: {
+      label: "调皮",
+      swatch: "#ffaa5c",
+      phrases: ["嘿嘿，被我发现了吧", "来抓我呀", "我又调皮了"],
+      mouth: "smirk",
+      eye: "wink",
+      brow: "lift",
+      arm: "wave",
+      bubble: "#ffe1c4"
+    },
+    pleading: {
+      label: "撒娇",
+      swatch: "#ff80ab",
+      phrases: ["求求你啦", "就这一次嘛", "你最好了啦"],
+      mouth: "smile",
+      eye: "spark",
+      brow: "soft",
+      arm: "hug",
+      bubble: "#ffd6e4"
+    },
+    complaining: {
+      label: "抱怨",
+      swatch: "#cdb4db",
+      phrases: ["怎么又是我", "这不公平", "我真的累了"],
+      mouth: "sad",
+      eye: "half",
+      brow: "tilt",
+      arm: "spread",
+      bubble: "#e7dff0"
+    },
+    curious: {
+      label: "好奇",
+      swatch: "#80ed99",
+      phrases: ["诶？这是什么", "我想看看", "这是什么原理"],
+      mouth: "question",
+      eye: "wide",
+      brow: "up",
+      arm: "spread",
+      bubble: "#dff5e1"
+    },
+    proud: {
+      label: "自豪",
+      swatch: "#ffc6ff",
+      phrases: ["这可是我做的", "我太厉害了", "看看我的成果"],
+      mouth: "smile",
+      eye: "spark",
+      brow: "lift",
+      arm: "spread",
+      bubble: "#fbe2f5"
+    },
+    cool: {
+      label: "耍酷",
+      swatch: "#577590",
+      phrases: ["不用解释", "我就静静看着", "已经习惯了"],
+      mouth: "smirk",
+      eye: "half",
+      brow: "lift",
+      arm: "wave",
+      bubble: "#dde3ed"
     }
   };
+
+  // 情绪中文 -> key 映射（用于解析 DeepSeek 返回）
+  // 按"长匹配优先"排序，所以包含关系也能命中
+  const EMOTION_NAME_MAP = {
+    "开心": "happy", "快乐": "happy", "高兴": "happy", "愉悦": "happy", "幸福": "happy", "偷笑": "happy", "笑": "happy", "狂喜": "happy", "喜": "happy",
+    "惊讶": "surprise", "惊喜": "surprise", "震惊": "surprise", "意外": "surprise", "惊": "surprise", "惊呆": "surprise",
+    "生气": "angry", "愤怒": "angry", "恼火": "angry", "不满": "angry", "火大": "angry", "怒": "angry",
+    "暴躁": "rage", "暴怒": "rage", "炸毛": "rage", "抓狂": "rage", "崩溃": "rage", "狂暴": "rage",
+    "委屈": "sad", "难过": "sad", "伤心": "sad", "沮丧": "sad", "低落": "sad", "哭": "sad", "流泪": "sad", "悲伤": "sad", "痛苦": "sad", "心碎": "sad",
+    "害羞": "shy", "羞涩": "shy", "不好意思": "shy", "脸红": "shy", "娇羞": "shy", "羞": "shy",
+    "得意": "smug", "傲娇": "smug", "傲气": "smug", "嘚瑟": "smug", "自信": "smug", "骄傲": "smug",
+    "困困": "sleepy", "困倦": "sleepy", "疲倦": "sleepy", "犯困": "sleepy", "疲惫": "sleepy", "瞌睡": "sleepy", "困": "sleepy",
+    "兴奋": "excited", "激动": "excited", "雀跃": "excited", "亢奋": "excited", "激动不已": "excited", "狂喜若狂": "excited",
+    "疑惑": "confused", "困惑": "confused", "迷茫": "confused", "纳闷": "confused", "不解": "confused", "无语": "confused", "懵": "confused", "懵圈": "confused",
+    "害怕": "scared", "恐惧": "scared", "惊吓": "scared", "吓": "scared", "怕": "scared", "惊恐": "scared", "担惊": "scared",
+    "紧张": "nervous", "忐忑": "nervous", "不安": "nervous", "焦虑": "nervous", "慌张": "nervous", "慌": "nervous",
+    "尴尬": "embarrassed", "窘迫": "embarrassed", "难堪": "embarrassed", "社死": "embarrassed",
+    "无聊": "bored", "枯燥": "bored", "乏味": "bored",
+    "期待": "expecting", "盼望": "expecting", "憧憬": "expecting", "盼望": "expecting", "期盼": "expecting", "期": "expecting",
+    "感动": "moved", "感激": "moved", "暖心": "moved", "泪目": "moved", "戳中": "moved",
+    "嫉妒": "jealous", "吃醋": "jealous", "眼红": "jealous", "酸": "jealous",
+    "嘲笑": "mocking", "讥讽": "mocking", "嘲讽": "mocking", "调侃": "mocking", "挖苦": "mocking", "嘲讽": "mocking",
+    "担心": "worried", "担忧": "worried", "忧虑": "worried", "牵挂": "worried", "忧": "worried",
+    "调皮": "playful", "捣蛋": "playful", "皮": "playful", "顽皮": "playful", "嬉皮": "playful", "鬼": "playful",
+    "撒娇": "pleading", "黏人": "pleading", "嗲": "pleading", "娇气": "pleading",
+    "抱怨": "complaining", "埋怨": "complaining", "牢骚": "complaining", "吐槽": "complaining", "诉苦": "complaining",
+    "好奇": "curious", "奇异": "curious", "探询": "curious", "奇": "curious",
+    "自豪": "proud", "骄傲自满": "proud", "光荣": "proud", "豪": "proud",
+    "耍酷": "cool", "冷酷": "cool", "高冷": "cool", "装酷": "cool", "酷": "cool", "冷": "cool",
+    "烦躁": "angry", "烦": "angry", "恼": "angry",
+    "累": "sleepy", "慵懒": "bored", "慵": "bored",
+    "心累": "sad", "绝望": "sad", "孤独": "sad", "寂寞": "sad", "孤单": "sad",
+    "傻眼": "confused", "呆": "confused", "呆滞": "confused",
+    "惊愕": "surprise", "愣住": "surprise", "愣": "surprise",
+    "大笑": "happy", "哈哈": "happy", "呵呵": "happy", "嘻嘻": "happy",
+    "大哭": "sad", "痛哭": "sad", "泪崩": "sad"
+  };
+
+  // 按 key 字符串长度从长到短排序，模糊匹配时优先匹配长 key
+  const EMOTION_NAME_KEYS_SORTED = Object.keys(EMOTION_NAME_MAP).sort((a, b) => b.length - a.length);
+
+  function resolveEmotionKey(name) {
+    if (!name) return null;
+    const text = String(name).trim();
+    if (!text) return null;
+    // 直接是英文 key（如 "scared"）
+    if (emotions[text]) return text;
+    // 中文名精确匹配
+    if (EMOTION_NAME_MAP[text]) return EMOTION_NAME_MAP[text];
+    // 包含关系：取最先匹配到的最长 key
+    for (const key of EMOTION_NAME_KEYS_SORTED) {
+      if (text.includes(key)) return EMOTION_NAME_MAP[key];
+    }
+    return null;
+  }
+
+  const DEEPSEEK_API_KEY_STORAGE = "emotion-character-deepseek-api-key";
+  const DEEPSEEK_MODEL_STORAGE = "emotion-character-deepseek-model";
+
+  function getDeepSeekConfig() {
+    let apiKey = "";
+    let model = "deepseek-chat";
+    try {
+      apiKey = localStorage.getItem(DEEPSEEK_API_KEY_STORAGE) || "";
+      model = localStorage.getItem(DEEPSEEK_MODEL_STORAGE) || "deepseek-chat";
+    } catch {}
+    return { apiKey, model };
+  }
+
+  function saveDeepSeekConfig(apiKey, model) {
+    try {
+      if (apiKey) localStorage.setItem(DEEPSEEK_API_KEY_STORAGE, apiKey);
+      if (model) localStorage.setItem(DEEPSEEK_MODEL_STORAGE, model);
+    } catch {}
+  }
+
+  function buildDeepSeekPrompt(persona, topic) {
+    const emotionOptions = Object.keys(emotions)
+      .map(k => emotions[k].label)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .join("、");
+
+    return `你是一个短视频台词创作助手。我会给一个小角色设定和话题，请生成适合的台词。
+
+【角色人格】
+${persona || "（未指定，请自由发挥）"}
+
+【话题】
+${topic}
+
+【要求】
+1. 生成 4-6 句口语化台词，每句 6-20 字
+2. 每句台词要符合角色人格和话题语境
+3. 给每句台词匹配一个情绪，情绪必须是以下之一：${emotionOptions}
+4. 台词要自然、有画面感，适合短视频气泡展示
+5. 为这个角色设计一个更具体的人格描述（30-60 字，凸显性格、口癖、说话风格）
+6. 根据这个角色的人格，给出一个匹配的语速倍率 speechRate：活泼外向角色用 1.1-1.4，沉稳内敛用 0.8-0.95，年长/慢条斯理用 0.7-0.85，急躁/激动用 1.2-1.5，正常角色用 1.0
+7. 严格只返回 JSON，不要任何解释或代码块标记
+
+返回格式（严格遵守）：
+{"persona":"这个角色的人格描述","speechRate":1.0,"lines":[{"text":"台词1","emotion":"开心"},{"text":"台词2","emotion":"惊讶"}]}`;
+  }
+
+  function parseDeepSeekContent(content) {
+    if (!content) return null;
+    // 尝试提取 JSON（去除可能的 ```json 包裹）
+    let text = content.trim();
+    const codeBlock = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+    if (codeBlock) text = codeBlock[1].trim();
+    // 找到第一个 { 到最后一个 }
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start < 0 || end < 0) return null;
+    const json = text.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(json);
+      if (!Array.isArray(parsed.lines)) return null;
+      // 提取 persona（可空）和 speechRate（0.5-2.0）
+      const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
+      const speechRate = clampSpeechRate(parsed.speechRate);
+      const cleaned = parsed.lines
+        .map(item => {
+          if (!item || typeof item !== "object") return null;
+          const text = String(item.text || "").trim();
+          if (!text) return null;
+          const emotionCn = String(item.emotion || "").trim();
+          const emotionKey = resolveEmotionKey(emotionCn);
+          return { text, emotionKey, emotionCn };
+        })
+        .filter(Boolean)
+        .slice(0, 8);
+      if (!cleaned.length) return null;
+      return { persona, speechRate, lines: cleaned };
+    } catch (err) {
+      console.warn("DeepSeek JSON parse failed:", err);
+      return null;
+    }
+  }
+
+  function clampSpeechRate(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 1.0;
+    return Math.max(0.5, Math.min(2.0, n));
+  }
+
+  async function callDeepSeek(apiKey, model, prompt) {
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "你是一个严谨的 JSON 生成器，严格按用户要求的 JSON 格式返回，不要任何额外文字。" },
+          { role: "user", content: prompt }
+        ],
+        temperature: 1.0,
+        max_tokens: 800,
+        stream: false
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`DeepSeek 请求失败 ${res.status}: ${errText.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("DeepSeek 返回内容为空");
+    return content;
+  }
+
+  async function generateDialogueWithAI(subject) {
+    const { apiKey, model } = getDeepSeekConfig();
+    if (!apiKey) {
+      showToast("请先在下方填写 DeepSeek API Key");
+      apiKeyInput.focus();
+      return;
+    }
+    const topic = (subject.topic || "").trim();
+    if (!topic) {
+      showToast("请先输入一个话题");
+      topicInput.focus();
+      return;
+    }
+    const persona = (subject.persona || "").trim();
+    const prompt = buildDeepSeekPrompt(persona, topic);
+    aiGenBtn.classList.add("loading");
+    aiGenBtn.disabled = true;
+    try {
+      const content = await callDeepSeek(apiKey, model, prompt);
+      const parsed = parseDeepSeekContent(content);
+      if (!parsed) {
+        showToast("AI 返回格式无法解析，请重试");
+        return;
+      }
+      const lines = parsed.lines;
+      // 若用户没填人格，用 AI 生成的填充
+      if (!persona && parsed.persona) {
+        subject.persona = parsed.persona;
+        personaInput.value = parsed.persona;
+      }
+      // 用 AI 生成的语速
+      if (parsed.speechRate && Number.isFinite(parsed.speechRate)) {
+        subject.speechRate = parsed.speechRate;
+      }
+      const texts = lines.map(l => l.text);
+      const emotions = lines.map(l => l.emotionKey || subject.emotion || "happy");
+      subject.dialogueText = texts.join("\n");
+      subject.dialogueLines = texts;
+      subject.lineEmotions = emotions;
+      resetDialogueVoiceState(subject);
+      subject.dialogueStartedAt = performance.now();
+      captionInput.value = subject.dialogueText;
+      buildLineEmotionPanel();
+      const matched = lines.filter(l => l.emotionKey).length;
+      const unmatchedSamples = lines
+        .filter(l => !l.emotionKey)
+        .map(l => l.emotionCn)
+        .filter(Boolean)
+        .slice(0, 3);
+      const unmatchedHint = unmatchedSamples.length
+        ? `，未识别情绪：${unmatchedSamples.join("、")}`
+        : "";
+      const speechHint = parsed.speechRate
+        ? `，语速 ${parsed.speechRate.toFixed(2)}×`
+        : "";
+      const personaHint = !persona && parsed.persona
+        ? "（已自动填写人格）"
+        : "";
+      showToast(`AI 生成 ${texts.length} 句（情绪匹配 ${matched}/${texts.length}）${unmatchedHint}${speechHint}${personaHint}`);
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || "AI 生成失败，请检查网络和 API Key");
+    } finally {
+      aiGenBtn.classList.remove("loading");
+      aiGenBtn.disabled = false;
+      refreshControls();
+    }
+  }
 
   const app = document.querySelector(".app");
   const canvas = document.getElementById("canvas");
@@ -937,9 +1475,18 @@ input[type="range"]::-moz-range-thumb {
   const legList = document.getElementById("legList");
   const bubbleList = document.getElementById("bubbleList");
   const voiceList = document.getElementById("voiceList");
+  const voiceModeList = document.getElementById("voiceModeList");
+  const topicSubjectTag = document.getElementById("topicSubjectTag");
+  const personaSubjectTag = document.getElementById("personaSubjectTag");
+  const speedSubjectTag = document.getElementById("speedSubjectTag");
   const captionInput = document.getElementById("captionInput");
   const lineEmotionPanel = document.getElementById("lineEmotionPanel");
   const personaInput = document.getElementById("personaInput");
+  const topicInput = document.getElementById("topicInput");
+  const aiGenBtn = document.getElementById("aiGenBtn");
+  const apiKeyInput = document.getElementById("apiKeyInput");
+  const apiModelSelect = document.getElementById("apiModelSelect");
+  const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
   const shuffleBtn = document.getElementById("shuffleBtn");
   const autoGenBtn = document.getElementById("autoGenBtn");
   const bodySlider = document.getElementById("bodySlider");
@@ -947,6 +1494,10 @@ input[type="range"]::-moz-range-thumb {
   const textSlider = document.getElementById("textSlider");
   const speedSlider = document.getElementById("speedSlider");
   const voiceVolumeSlider = document.getElementById("voiceVolumeSlider");
+  const voicePitchSlider = document.getElementById("voicePitchSlider");
+  const voicePitchTag = document.getElementById("voicePitchTag");
+  const speechRateSlider = document.getElementById("speechRateSlider");
+  const speechRateTag = document.getElementById("speechRateTag");
   const voiceToggle = document.getElementById("voiceToggle");
   const previewVoiceBtn = document.getElementById("previewVoiceBtn");
   const bodyToggle = document.getElementById("bodyToggle");
@@ -982,7 +1533,8 @@ input[type="range"]::-moz-range-thumb {
     exporting: false,
     recordingAudio: false,
     lastTrackAt: 0,
-    startedAt: performance.now()
+    startedAt: performance.now(),
+    subjectButtons: new Map()
   };
 
   function setStatus(text) {
@@ -1180,7 +1732,7 @@ input[type="range"]::-moz-range-thumb {
     const text = dialogue.line || "";
     const textWeight = Math.max(3, Math.min(14, Array.from(text).length));
     const syllableCount = Math.max(3, Math.min(12, Math.ceil(textWeight / 2.2)));
-    const lineDuration = Math.max(0.55, Math.min(3.2, (Number(dialogue.speed) || Number(subject.lineSpeed) || 1.8) * 0.86));
+    const lineDuration = Math.max(0.55, Math.min(3.2, (Number(dialogue.speed) || Number(subject.lineSpeed) || 3.5) * 0.86));
     const gap = lineDuration / syllableCount;
     const syllableDuration = Math.max(0.045, Math.min(0.16, gap * 0.58 / mod.rate));
     const volume = Math.max(0, Math.min(1, Number(subject.voiceVolume ?? 0.58))) * 0.18 * mod.gain;
@@ -1196,13 +1748,237 @@ input[type="range"]::-moz-range-thumb {
     }
   }
 
+  // ===== TTS（Web Speech API 朗读对白）=====
+
+  // 系统中文声音缓存：第一次取，浏览器异步加载完再刷新
+  let _allZhVoices = null;
+  let _zhVoicesLoaded = false;
+
+  function getAllZhVoices() {
+    if (!('speechSynthesis' in window)) return [];
+    if (_zhVoicesLoaded && _allZhVoices) return _allZhVoices;
+    const all = window.speechSynthesis.getVoices() || [];
+    _allZhVoices = all.filter(v => /^zh/i.test(v.lang));
+    _zhVoicesLoaded = true;
+    return _allZhVoices;
+  }
+
+  // 根据音色类型匹配最合适的系统语音
+  function getVoiceForType(voiceType) {
+    if (!('speechSynthesis' in window)) return null;
+    const zhVoices = getAllZhVoices();
+    if (!zhVoices.length) return null;
+
+    const name = (v) => (v.name || "").toLowerCase();
+    const lang = (v) => (v.lang || "").toLowerCase();
+
+    switch (voiceType) {
+      case "child": {
+        // 优先找「童声/瑶瑶」类系统声音
+        const childVoice = zhVoices.find(v =>
+          name(v).includes("yaoyao") || name(v).includes("tongtong") ||
+          name(v).includes("mei-jia") || lang(v) === "zh-tw"
+        );
+        if (childVoice) return childVoice;
+        // 没专门童声则返回音高最高的女声（后面再用 pitch 拉高）
+        const femaleVoices = zhVoices.filter(v => !name(v).includes("kangkang"));
+        if (femaleVoices.length) return femaleVoices[0];
+        return zhVoices[0];
+      }
+      case "villain": {
+        // 坏人音：用 zh-CN 女声 + 极低音高制造阴森感（不和男声抢 kangkang）
+        const defaultZh = zhVoices.find(v => lang(v) === "zh-cn" || lang(v) === "zh_cn");
+        return defaultZh || zhVoices[0];
+      }
+      case "yujie": {
+        // 御姐音：找成熟女声或 zh-CN（偏低音高）
+        const mature = zhVoices.find(v =>
+          name(v).includes("huihui") || lang(v) === "zh-cn" || lang(v) === "zh_cn"
+        );
+        return mature || zhVoices[0];
+      }
+      case "northeast": {
+        // 东北话：用 zh-CN 女声 + 低音高 + 快语速（靠 pitch/rate 区分，不抢男声）
+        const zhcn = zhVoices.find(v => lang(v) === "zh-cn" || lang(v) === "zh_cn");
+        return zhcn || zhVoices[0];
+      }
+      case "male": {
+        // 男声：先在中文语音里找男性标识名
+        const zhMale = zhVoices.find(v => {
+          const n = name(v);
+          return n.includes("kangkang") || n.includes("male") ||
+            n.includes("xiaoxiao") || n.includes("yunyang") ||
+            n.includes("yunjian") || n.includes("yixi") ||
+            n.includes("yunxi") || n.includes("xiaoyi");
+        });
+        if (zhMale) return zhMale;
+        // 再搜所有语音，某些非 zh 语音也支持中文朗读
+        const allVoices = window.speechSynthesis.getVoices() || [];
+        const anyMale = allVoices.find(v => {
+          const n = (v.name || "").toLowerCase();
+          return /^zh/i.test(v.lang) && (
+            n.includes("kang") || n.includes("male") || n.includes("man") ||
+            n.includes("boy") || n.includes("yun") || n.includes("xiaoyi")
+          );
+        });
+        if (anyMale) return anyMale;
+        // 没系统男声 → 用 zh-CN 女声 + 极低音高（用户可调音高滑块补偿）
+        const zhcn = zhVoices.find(v => /zh-cn/i.test(v.lang));
+        return zhcn || zhVoices[0];
+      }
+      case "mandarin":
+      default: {
+        // 普通话：标准 zh-CN
+        const mandVoice = zhVoices.find(v =>
+          lang(v) === "zh-cn" || lang(v) === "zh_cn" || name(v).includes("huihui")
+        );
+        return mandVoice || zhVoices[0];
+      }
+    }
+  }
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      _zhVoicesLoaded = false;
+      _allZhVoices = null;
+    };
+  }
+
+  function clampTTSRate(speechRate) {
+    return Math.max(0.5, Math.min(2.0, Number(speechRate) || 1.0));
+  }
+
+  // 简单 hash，用于生成稳定的伪随机变调
+  function hashStr(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h);
+  }
+
+  // 按中文标点拆分句子为自然停顿片段，合并过短片段
+  function splitForNaturalSpeech(text) {
+    if (!text) return [""];
+    // 在逗号、分号、句号、感叹、问号、顿号、换行后切开（保留标点）
+    const raw = text.split(/(?<=[，；。！？、\n])/);
+    const merged = [];
+    let buf = "";
+    for (const p of raw) {
+      buf += p;
+      // 累积到 4 字或遇到句末标点/换行就输出一段
+      if (buf.length >= 4 || /[。！？\n]/.test(p)) {
+        if (buf.trim()) merged.push(buf);
+        buf = "";
+      }
+    }
+    if (buf.trim()) merged.push(buf);
+    return merged.length ? merged : [text];
+  }
+
+  // TTS 链式分段朗读：模拟真人停顿 + 音高微变
+  let _ttsActiveCount = 0;
+  let _ttsChainId = 0;
+
+  function speakSegments(segments, idx, chainId, opts) {
+    if (idx >= segments.length) return;
+    if (chainId !== _ttsChainId) return; // 已被新句子取消
+
+    const seg = segments[idx].trim();
+    if (!seg) {
+      speakSegments(segments, idx + 1, chainId, opts);
+      return;
+    }
+
+    const utter = new SpeechSynthesisUtterance(seg);
+    utter.lang = "zh-CN";
+
+    // 语速微变 ±6%，模拟真人节奏
+    const rateVar = 0.94 + (hashStr(seg + idx) % 13) / 100;
+    utter.rate = clampTTSRate(opts.rate * rateVar);
+
+    // 音高微变 ±10%，不同片段略有起伏
+    let pitchVar = 0.90 + (hashStr(seg + idx + "p") % 21) / 100;
+    // 句末语调：疑问 ↑  感叹 ↑  陈述 ↓
+    const isLast = idx === segments.length - 1;
+    if (isLast && /？$/.test(seg)) pitchVar += 0.08;
+    else if (isLast && /！$/.test(seg)) pitchVar += 0.04;
+    else if (isLast && /。$/.test(seg)) pitchVar -= 0.06;
+    utter.pitch = Math.max(0.1, Math.min(2.0, opts.basePitch * opts.userPitch * opts.emoPitch * pitchVar));
+
+    // 句末语速微调
+    if (isLast && /[。！？]$/.test(seg)) {
+      utter.rate = clampTTSRate(opts.rate * rateVar * 0.94); // 句末稍慢收尾
+    }
+
+    utter.volume = opts.volume;
+    if (opts.voice) utter.voice = opts.voice;
+
+    _ttsActiveCount += 1;
+
+    utter.onend = () => {
+      _ttsActiveCount = Math.max(0, _ttsActiveCount - 1);
+      if (chainId !== _ttsChainId) return;
+      // 段间停顿 150~300ms，模仿换气/思考
+      const pause = 150 + (hashStr(seg + "pause") % 150);
+      setTimeout(() => {
+        speakSegments(segments, idx + 1, chainId, opts);
+      }, pause);
+    };
+
+    utter.onerror = () => {
+      _ttsActiveCount = Math.max(0, _ttsActiveCount - 1);
+      if (chainId === _ttsChainId) {
+        setTimeout(() => speakSegments(segments, idx + 1, chainId, opts), 200);
+      }
+    };
+
+    window.speechSynthesis.speak(utter);
+  }
+
+  function playTTS(subject, dialogue) {
+    if (!('speechSynthesis' in window)) return;
+    const text = String(dialogue.line || "").trim();
+    if (!text) return;
+
+    // 取消上一句朗读链，开始新链
+    try { window.speechSynthesis.cancel(); } catch {}
+    _ttsChainId += 1;
+    _ttsActiveCount = 0;
+
+    const segments = splitForNaturalSpeech(text);
+    const voice = getVoiceForType(subject.voiceType);
+    const baseRate = VOICE_BASE_RATE_TTS[subject.voiceType] || 1.0;
+    const basePitch = VOICE_BASE_PITCH_TTS[subject.voiceType] || 1.0;
+    const userPitch = Number(subject.voicePitch) || 1.0;
+    const emoPitch = EMOTION_PITCH_TTS[dialogue.emotion] || 1.0;
+    const rate = clampTTSRate((subject.speechRate || 1.0) * baseRate);
+    const volume = Math.max(0, Math.min(1, Number(subject.voiceVolume ?? 0.58)));
+
+    speakSegments(segments, 0, _ttsChainId, { voice, basePitch, userPitch, emoPitch, rate, volume });
+  }
+
+  // 统一分发：根据 subject.voiceMode 决定走 TTS 还是 gibberish
+  function playSubjectVoice(subject, dialogue, force = false) {
+    if (!subject || subject.voiceEnabled === false) return;
+    if (!force && subject.lastSpokenLineIndex === dialogue.index) return;
+    const wantTTS = subject.voiceMode !== "gibberish" && 'speechSynthesis' in window;
+    if (wantTTS) {
+      subject.lastSpokenLineIndex = dialogue.index;
+      playTTS(subject, dialogue);
+    } else {
+      // playGibberish 内部还有 lastSpokenLineIndex 检查，幂等
+      playGibberish(subject, dialogue, force);
+    }
+  }
+
   async function previewSubjectVoice() {
     const subject = selectedSubject();
     if (!subject) return;
     const ok = await ensureAudio(true);
     if (!ok) return;
     const dialogue = getCurrentDialogueState(subject, performance.now());
-    playGibberish(subject, { ...dialogue, index: `preview_${Date.now()}` }, true);
+    playSubjectVoice(subject, { ...dialogue, index: `preview_${Date.now()}` }, true);
   }
 
   function selectedSubject() {
@@ -1249,6 +2025,21 @@ input[type="range"]::-moz-range-thumb {
       sleepy: ["我真的困了", "让我再眯一会儿", "电量快见底了"],
       excited: ["我已经等不及了", "走，我们冲", "这太好玩了"],
       confused: ["我有点没看懂", "这题怎么解", "我再想想"],
+      scared: ["救命，我好怕", "你别吓我", "心里发毛"],
+      nervous: ["我有点慌", "感觉要出事", "心跳好快"],
+      embarrassed: ["假装我不存在", "我不是故意的", "脚趾抠出三室一厅"],
+      bored: ["啊…好无聊", "有没有事做", "我已经石化了"],
+      expecting: ["好期待啊", "快到快到", "我已经在倒数了"],
+      moved: ["谢谢你", "我有点想哭", "你真的好暖"],
+      jealous: ["凭什么啊", "哼，我不稀罕", "我也可以的"],
+      mocking: ["就这？", "哈哈笑死我了", "你不是认真的吧"],
+      worried: ["你没事吧", "我有点担心你", "希望你一切顺利"],
+      playful: ["嘿嘿被我发现了", "来抓我呀", "我又皮了一下"],
+      pleading: ["求求你啦", "就这一次嘛", "你最好了啦"],
+      complaining: ["怎么又是我", "这不公平", "我真的累了"],
+      curious: ["诶这是什么", "我想看看", "还能这样？"],
+      proud: ["这可是我做的", "我太厉害了", "看看我的成果"],
+      cool: ["不用解释", "我就静静看着", "已经习惯了"],
     };
 
     const traitHooks = personaBits.length ? personaBits : ["我有自己的小脾气", "我会认真观察", "我喜欢把话说清楚"];
@@ -1287,7 +2078,7 @@ input[type="range"]::-moz-range-thumb {
   function getCurrentDialogueState(subject, now) {
     const lines = getDialogueLines(subject);
     if (!lines.length) return { line: "", index: 0, emotion: subject.emotion || "happy", lines };
-    const speed = Math.max(0.8, Number(subject.lineSpeed) || 1.8);
+    const speed = Math.max(0.8, Number(subject.lineSpeed) || 3.5);
     const elapsed = (now - (subject.dialogueStartedAt || state.startedAt)) / 1000;
     const index = Math.floor(elapsed / speed) % lines.length;
     const emotion = subject.lineEmotions?.[index] || subject.emotion || "happy";
@@ -1325,15 +2116,19 @@ input[type="range"]::-moz-range-thumb {
       legMode: "stand",
       bubbleStyle: "speech",
       bubbleScale: 1,
-      voiceType: "minion",
+      voiceType: "mandarin",
+      voiceMode: "tts",
       voiceEnabled: true,
       voiceVolume: 0.58,
+      voicePitch: 1.0,
       lastSpokenLineIndex: null,
+      speechRate: 1.0,
       dialogueText: basePhrase,
       dialogueLines: [basePhrase],
       lineEmotions: [baseEmotion],
       persona: "",
-      lineSpeed: 1.8,
+      topic: "",
+      lineSpeed: 3.5,
       dialogueStartedAt: performance.now(),
       autoTrack: true,
       showBody: true,
@@ -1411,8 +2206,12 @@ input[type="range"]::-moz-range-thumb {
     textToggle.disabled = !enabled;
     captionInput.disabled = !enabled;
     personaInput.disabled = !enabled;
+    topicInput.disabled = !enabled;
+    aiGenBtn.disabled = !enabled;
     speedSlider.disabled = !enabled;
     voiceVolumeSlider.disabled = !enabled;
+    voicePitchSlider.disabled = !enabled;
+    speechRateSlider.disabled = !enabled;
     voiceToggle.disabled = !enabled;
     previewVoiceBtn.disabled = !enabled;
     shuffleBtn.disabled = !enabled;
@@ -1423,6 +2222,7 @@ input[type="range"]::-moz-range-thumb {
     buildFaceStyleButtons();
     buildLegButtons();
     buildBubbleButtons();
+    buildVoiceModeButtons();
     buildVoiceButtons();
     buildLineEmotionPanel();
 
@@ -1430,16 +2230,35 @@ input[type="range"]::-moz-range-thumb {
       captionInput.value = "";
       personaInput.value = "";
       lineEmotionPanel.innerHTML = "";
+      if (topicSubjectTag) topicSubjectTag.textContent = "";
+      if (personaSubjectTag) personaSubjectTag.textContent = "";
+      if (speedSubjectTag) speedSubjectTag.textContent = "";
+      if (speechRateTag) speechRateTag.textContent = "";
+      if (voicePitchTag) voicePitchTag.textContent = "";
       return;
+    }
+
+    const idx = selectedSubjectIndex() + 1;
+    const total = state.subjects.length;
+    if (topicSubjectTag) topicSubjectTag.textContent = `${idx}/${total} 号主体`;
+    if (personaSubjectTag) personaSubjectTag.textContent = `${idx}/${total} 号主体`;
+    if (speedSubjectTag) {
+      const liveSpeed = Number(speedSlider.value || subject.lineSpeed || 3.5).toFixed(1);
+      speedSubjectTag.textContent = `${liveSpeed}×`;
     }
 
     captionInput.value = subject.dialogueText || "";
     personaInput.value = subject.persona || "";
+    topicInput.value = subject.topic || "";
     bodySlider.value = Math.round(subject.bodySize);
     faceSlider.value = Math.round(subject.faceScale * 100);
     textSlider.value = Math.round(subject.textScale);
-    speedSlider.value = Number(subject.lineSpeed || 1.8).toFixed(1);
+    speedSlider.value = Number(subject.lineSpeed || 3.5).toFixed(1);
     voiceVolumeSlider.value = Math.round(clamp((subject.voiceVolume ?? 0.58) * 100, 0, 100));
+    voicePitchSlider.value = Number(subject.voicePitch || 1.0).toFixed(2);
+    if (voicePitchTag) voicePitchTag.textContent = `${Number(subject.voicePitch || 1.0).toFixed(2)}×`;
+    speechRateSlider.value = Number(subject.speechRate || 1.0).toFixed(2);
+    if (speechRateTag) speechRateTag.textContent = `${Number(subject.speechRate || 1.0).toFixed(2)}×`;
     voiceToggle.checked = subject.voiceEnabled !== false;
     followToggle.checked = subject.autoTrack !== false;
     bodyToggle.checked = subject.showBody !== false;
@@ -1451,6 +2270,7 @@ input[type="range"]::-moz-range-thumb {
 
   function buildSubjectButtons() {
     subjectList.innerHTML = "";
+    state.subjectButtons.clear();
     if (!state.subjects.length) {
       const empty = document.createElement("button");
       empty.type = "button";
@@ -1465,11 +2285,32 @@ input[type="range"]::-moz-range-thumb {
       const mood = emotions[subject.emotion] || emotions.happy;
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.dataset.subjectId = subject.id;
       btn.className = `chip subject-chip${subject.id === state.selectedId ? " active" : ""}`;
-      btn.innerHTML = `<span>${mood.label}</span><span class="badge">${index + 1}</span>`;
+      const labelEl = document.createElement("span");
+      labelEl.className = "label";
+      labelEl.textContent = mood.label;
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = index + 1;
+      btn.append(labelEl, badge);
       btn.addEventListener("click", () => selectSubject(subject.id));
       subjectList.appendChild(btn);
+      state.subjectButtons.set(subject.id, { btn, labelEl });
     });
+  }
+
+  function updateSubjectEmotionLabels(now) {
+    if (!state.subjectButtons.size) return;
+    for (const subject of state.subjects) {
+      const entry = state.subjectButtons.get(subject.id);
+      if (!entry) continue;
+      const dialogue = getCurrentDialogueState(subject, now);
+      const mood = emotions[dialogue.emotion] || emotions[subject.emotion] || emotions.happy;
+      if (entry.labelEl.textContent !== mood.label) {
+        entry.labelEl.textContent = mood.label;
+      }
+    }
   }
 
   function buildEmotionButtons() {
@@ -1566,10 +2407,50 @@ input[type="range"]::-moz-range-thumb {
         target.voiceType = key;
         await ensureAudio(false);
         const dialogue = getCurrentDialogueState(target, performance.now());
-        playGibberish(target, { ...dialogue, index: `voice_${Date.now()}` }, true);
+        playSubjectVoice(target, { ...dialogue, index: `voice_${Date.now()}` }, true);
         refreshControls();
       });
       voiceList.appendChild(btn);
+    });
+  }
+
+  const VOICE_MODES = {
+    tts: { label: "🔊 朗读对白" },
+    gibberish: { label: "🎵 趣味发音" }
+  };
+
+  function buildVoiceModeButtons() {
+    if (!voiceModeList) return;
+    voiceModeList.innerHTML = "";
+    const subject = selectedSubject();
+    const ttsAvailable = 'speechSynthesis' in window;
+    Object.entries(VOICE_MODES).forEach(([key, mode]) => {
+      const btn = document.createElement("button");
+      const isActive = subject && (subject.voiceMode || "tts") === key;
+      btn.className = `chip${isActive ? " active" : ""}`;
+      btn.type = "button";
+      btn.textContent = mode.label;
+      btn.disabled = key === "tts" && !ttsAvailable;
+      btn.title = key === "tts" && !ttsAvailable
+        ? "当前浏览器不支持 Web Speech API，将回退到趣味发音"
+        : "";
+      btn.addEventListener("click", () => {
+        const target = selectedSubject();
+        if (!target) return;
+        if (key === "tts" && !ttsAvailable) {
+          showToast("当前浏览器不支持朗读，已用趣味发音");
+          return;
+        }
+        target.voiceMode = key;
+        // 试听一下当前模式
+        if (target.voiceEnabled !== false) {
+          const dialogue = getCurrentDialogueState(target, performance.now());
+          if (key === "tts") playTTS(target, dialogue);
+          else playGibberish(target, { ...dialogue, index: `mode_${Date.now()}` }, true);
+        }
+        refreshControls();
+      });
+      voiceModeList.appendChild(btn);
     });
   }
 
@@ -1605,14 +2486,18 @@ input[type="range"]::-moz-range-thumb {
 
       const select = document.createElement("select");
       select.className = "line-select";
-      select.value = subject.lineEmotions?.[index] || subject.emotion || "happy";
       Object.entries(emotions).forEach(([key, mood]) => {
         const option = document.createElement("option");
         option.value = key;
         option.textContent = mood.label;
-        if (option.value === select.value) option.selected = true;
         select.appendChild(option);
       });
+      // 先填好 options 再设 value，否则浏览器在 option 缺失时会把 value 清空
+      const validKeys = Object.keys(emotions);
+      const wanted = validKeys.includes(subject.lineEmotions?.[index])
+        ? subject.lineEmotions[index]
+        : (validKeys.includes(subject.emotion) ? subject.emotion : "happy");
+      select.value = wanted;
       select.addEventListener("change", () => {
         const target = selectedSubject();
         if (!target) return;
@@ -1847,6 +2732,7 @@ input[type="range"]::-moz-range-thumb {
     } else {
       drawFallbackBackground(now);
     }
+    updateSubjectEmotionLabels(now);
     requestAnimationFrame(render);
   }
 
@@ -1863,7 +2749,7 @@ input[type="range"]::-moz-range-thumb {
     const bubbleText = dialogue.line;
 
     if (!state.exporting || state.recordingAudio) {
-      playGibberish(subject, dialogue);
+      playSubjectVoice(subject, dialogue);
     }
 
     ctx.save();
@@ -2166,6 +3052,24 @@ input[type="range"]::-moz-range-thumb {
       return;
     }
 
+    if (mood.mouth === "o") {
+      // 小圆嘴：比 open 略小，更像"啊/哦"的惊呼
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.22, r * 0.1, r * (0.13 + wobble), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+
+    if (mood.mouth === "frown") {
+      // 倒八字眉头嘴：抱怨/严肃/不满
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.2, y + r * 0.22);
+      ctx.quadraticCurveTo(x, y + r * 0.32, x + r * 0.2, y + r * 0.22);
+      ctx.stroke();
+      return;
+    }
+
     if (mood.mouth === "smirk") {
       ctx.beginPath();
       ctx.moveTo(x - r * 0.18, y + r * 0.21);
@@ -2229,7 +3133,7 @@ input[type="range"]::-moz-range-thumb {
 
   function drawCheeks(subject, mood, x, y, r, t) {
     const style = subject.faceStyle || "classic";
-    if (mood.mouth === "grit" || mood.mouth === "shout" || mood.mouth === "open") return;
+    if (mood.mouth === "grit" || mood.mouth === "shout" || mood.mouth === "open" || mood.mouth === "o" || mood.mouth === "frown") return;
     if (style === "cool") return;
     const alpha = style === "kawaii" || style === "chibi" ? 0.48 + Math.sin(t * 4) * 0.08 : mood.mouth === "sad" ? 0.18 : 0.32 + Math.sin(t * 4) * 0.08;
     const cheekW = r * (style === "kawaii" || style === "chibi" ? 0.14 : 0.1);
@@ -3093,6 +3997,34 @@ input[type="range"]::-moz-range-thumb {
     if (!subject) return;
     subject.persona = personaInput.value;
   });
+  topicInput.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.topic = topicInput.value;
+  });
+  aiGenBtn.addEventListener("click", async () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.topic = topicInput.value.trim();
+    subject.persona = personaInput.value.trim();
+    await generateDialogueWithAI(subject);
+  });
+  saveApiKeyBtn.addEventListener("click", () => {
+    const key = apiKeyInput.value.trim();
+    const model = apiModelSelect.value;
+    if (!key) {
+      showToast("API Key 不能为空");
+      return;
+    }
+    saveDeepSeekConfig(key, model);
+    showToast("已保存到本地，下次直接使用");
+  });
+  // 初始化时从 localStorage 读取
+  (function initDeepSeekUI() {
+    const { apiKey, model } = getDeepSeekConfig();
+    if (apiKey) apiKeyInput.value = apiKey;
+    if (model) apiModelSelect.value = model;
+  })();
   detectBtn.addEventListener("click", () => {
     detectSelectedSubject(true);
     refreshControls();
@@ -3124,6 +4056,7 @@ input[type="range"]::-moz-range-thumb {
     const subject = selectedSubject();
     if (!subject) return;
     subject.lineSpeed = Number(speedSlider.value);
+    if (speedSubjectTag) speedSubjectTag.textContent = `${Number(speedSlider.value).toFixed(1)}×`;
     resetDialogueVoiceState(subject);
     subject.dialogueStartedAt = performance.now();
   });
@@ -3131,6 +4064,19 @@ input[type="range"]::-moz-range-thumb {
     const subject = selectedSubject();
     if (!subject) return;
     subject.voiceVolume = Number(voiceVolumeSlider.value) / 100;
+  });
+  voicePitchSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.voicePitch = Number(voicePitchSlider.value);
+    if (voicePitchTag) voicePitchTag.textContent = `${subject.voicePitch.toFixed(2)}×`;
+  });
+  speechRateSlider.addEventListener("input", () => {
+    const subject = selectedSubject();
+    if (!subject) return;
+    subject.speechRate = Number(speechRateSlider.value);
+    if (speechRateTag) speechRateTag.textContent = `${subject.speechRate.toFixed(2)}×`;
+    resetDialogueVoiceState(subject);
   });
   voiceToggle.addEventListener("change", () => {
     const subject = selectedSubject();
