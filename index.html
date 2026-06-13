@@ -871,7 +871,7 @@ input[type="range"]::-moz-range-thumb {
           <div class="ios-slider-row"><span class="ios-slider-label">文字大小</span><input id="textSlider" type="range" min="18" max="42" value="28"></div>
           <div class="ios-slider-row">
             <span class="ios-slider-label">台词速度</span>
-            <input id="speedSlider" type="range" min="0.8" max="5.0" step="0.1" value="3.5">
+            <input id="speedSlider" type="range" min="2.0" max="6.0" step="0.1" value="3.5">
             <span class="panel-actions" id="speedSubjectTag" style="font-size:11px;color:var(--text-tertiary);min-width:48px;text-align:right"></span>
           </div>
         </div>
@@ -1110,7 +1110,11 @@ input[type="range"]::-moz-range-thumb {
     盛长柏: { label:"盛长柏 · 刚正孤行", desc:"寡言少语，严于律己。处事公允，坚守礼法与正义。对婚姻忠诚，厌恶纳妾。内心有大智慧，但行事一丝不苟，略显刻板。", voice:"male", emotion:"cool" },
     盛华兰: { label:"盛华兰 · 端水艺术", desc:"端庄大方，深明大义。善于平衡各方关系，是家族中的沟通桥梁。能长期隐忍，等待时机扭转局面。果敢沉着，懂得借力改变自己的处境。", voice:"yujie", emotion:"expecting" },
     齐衡: { label:"齐衡 · 温润金笼", desc:"才华横溢，相貌出众，举止优雅。心地纯善，但性格优柔寡断。受制于家庭权势，缺乏挣脱的勇气。痴情但被动，言语间总带着一丝无奈。", voice:"mandarin", emotion:"shy" },
-    小秦氏: { label:"小秦氏 · 伪善布局", desc:"表面贤淑温婉，实则心机深沉。信奉'捧杀'，以纵容和娇惯来毁人。从不亲自出手，善于借刀杀人。一生为儿子谋划，讲话滴水不漏。", voice:"yujie", emotion:"mocking" }
+    小秦氏: { label:"小秦氏 · 伪善布局", desc:"表面贤淑温婉，实则心机深沉。信奉'捧杀'，以纵容和娇惯来毁人。从不亲自出手，善于借刀杀人。一生为儿子谋划，讲话滴水不漏。", voice:"yujie", emotion:"mocking" },
+    伤心人格: { label:"伤心人格 · 悲观视角", desc:"看什么问题都先看到坏的一面。习惯性设想最糟糕的结果。敏感多疑，总觉得好事轮不到自己。说话语气低沉、消极、充满担忧。", voice:"yujie", emotion:"sad" },
+    开心人格: { label:"开心人格 · 乐观滤镜", desc:"看什么都只看好的一面。天塌下来当被子盖。永远笑嘻嘻，再糟糕的事也能找到角度开心起来。说话轻快明亮，充满正能量。", voice:"child", emotion:"happy" },
+    中立人格: { label:"中立人格 · 辩证视角", desc:"善于一分为二看问题。既看到好事里的隐患，也看到坏事里的转机。说话有理有据，不偏不倚，喜欢说'一方面……另一方面……'。", voice:"mandarin", emotion:"cool" },
+    中二人格: { label:"中二人格 · 热血台词", desc:"说话必须带感叹号！动不动就'燃烧吧''觉醒吧''这就是我的宿命'。把日常小事说得像拯救世界。语气夸张、热血、充满戏剧性。", voice:"northeast", emotion:"excited" }
   };
 
   const emotions = {
@@ -2042,12 +2046,12 @@ ${topic}
   }
 
   // TTS 链式分段朗读：模拟真人停顿 + 音高微变
-  let _ttsActiveCount = 0;
   let _ttsChainId = 0;
+  let _ttsLineActive = false; // 是否有句子正在朗读中
 
   function speakSegments(segments, idx, chainId, opts) {
-    if (idx >= segments.length) return;
-    if (chainId !== _ttsChainId) return; // 已被新句子取消
+    if (idx >= segments.length) { _ttsLineActive = false; return; }
+    if (chainId !== _ttsChainId) { _ttsLineActive = false; return; } // 已被新句取消
 
     const seg = segments[idx].trim();
     if (!seg) {
@@ -2079,20 +2083,22 @@ ${topic}
     utter.volume = opts.volume;
     if (opts.voice) utter.voice = opts.voice;
 
-    _ttsActiveCount += 1;
-
     utter.onend = () => {
-      _ttsActiveCount = Math.max(0, _ttsActiveCount - 1);
       if (chainId !== _ttsChainId) return;
       // 段间停顿 150~300ms，模仿换气/思考
       const pause = 150 + (hashStr(seg + "pause") % 150);
       setTimeout(() => {
+        if (isLast && opts.subject && opts.dialogue) {
+          // 整句读完 → 推进台词到下一句
+          const subj = opts.subject;
+          const speed = Math.max(2.0, Number(subj.lineSpeed) || 3.5);
+          subj.dialogueStartedAt -= speed * 1000;
+        }
         speakSegments(segments, idx + 1, chainId, opts);
       }, pause);
     };
 
     utter.onerror = () => {
-      _ttsActiveCount = Math.max(0, _ttsActiveCount - 1);
       if (chainId === _ttsChainId) {
         setTimeout(() => speakSegments(segments, idx + 1, chainId, opts), 200);
       }
@@ -2106,10 +2112,12 @@ ${topic}
     const text = String(dialogue.line || "").trim();
     if (!text) return;
 
-    // 取消上一句朗读链，开始新链
-    try { window.speechSynthesis.cancel(); } catch {}
-    _ttsChainId += 1;
-    _ttsActiveCount = 0;
+    // 只有上一句还在朗读时才取消，避免打断当前句
+    if (_ttsLineActive) {
+      try { window.speechSynthesis.cancel(); } catch {}
+      _ttsChainId += 1;
+    }
+    _ttsLineActive = true;
 
     const segments = splitForNaturalSpeech(text);
     const voice = getVoiceForType(subject.voiceType);
@@ -2120,7 +2128,7 @@ ${topic}
     const rate = clampTTSRate((subject.speechRate || 1.0) * baseRate);
     const volume = Math.max(0, Math.min(1, Number(subject.voiceVolume ?? 0.58)));
 
-    speakSegments(segments, 0, _ttsChainId, { voice, basePitch, userPitch, emoPitch, rate, volume });
+    speakSegments(segments, 0, _ttsChainId, { voice, basePitch, userPitch, emoPitch, rate, volume, subject, dialogue });
   }
 
   // 统一分发：根据 subject.voiceMode 决定走 TTS 还是 gibberish
@@ -2156,8 +2164,9 @@ ${topic}
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("当前浏览器不支持摄像头访问");
     }
+    // 同时请求视频+音频（iOS 不允许分别调用 getUserMedia）
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
+      audio: true,
       video: {
         facingMode,
         width: { ideal: 720 },
@@ -2168,7 +2177,7 @@ ${topic}
     state.liveMode.facingMode = facingMode;
     sourceVideo.srcObject = stream;
     sourceVideo.playsInline = true;
-    sourceVideo.muted = true;
+    sourceVideo.muted = true; // 静音避免回音，录制时从 stream 直接取音轨
     await sourceVideo.play();
     state.source = sourceVideo;
     state.sourceType = "video";
@@ -2546,40 +2555,51 @@ ${historyText || "（对话刚刚开始）"}
       return;
     }
 
-    // 切换到 gibberish 模式以便捕获角色声音（TTS 走系统输出，无法用 Web Audio 捕获）
+    // 切换到 gibberish 模式以便捕获角色声音（TTS 走系统输出，无法被 Web Audio 捕获）
     for (const s of state.subjects) {
       s._prevVoiceMode = s.voiceMode;
       s.voiceMode = "gibberish";
     }
 
-    // 确保音频上下文活跃
+    // 确保音频上下文活跃 + 预播放一段无声 gibberish 以激活 audioDestination 音轨
     await ensureAudio(false);
     if (!audioDestination || !audioDestination.stream) {
       showToast("音频系统未就绪，请重试");
       return;
     }
 
+    // 轻触发音频图，让 MediaStreamDestination 生成音轨
+    if (audioCtx && audioCtx.state === "running" && audioDestination.stream.getAudioTracks().length === 0) {
+      const warmOsc = audioCtx.createOscillator();
+      const warmGain = audioCtx.createGain();
+      warmGain.gain.value = 0.001; // 几乎听不到
+      warmOsc.connect(warmGain);
+      warmGain.connect(audioDestination);
+      warmOsc.start(audioCtx.currentTime);
+      warmOsc.stop(audioCtx.currentTime + 0.05);
+    }
+
     // 1. Canvas 视频流
     const videoStream = canvas.captureStream(30);
     const videoTracks = videoStream.getVideoTracks();
 
-    // 2. 麦克风音频流（用户声音）
-    let micStream = null;
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      console.warn("Mic not available:", e);
-    }
-    const micTracks = micStream ? micStream.getAudioTracks() : [];
+    // 2. 麦克风音频（从摄像头流中拿，startCamera 已请求 audio+video 一起）
+    const micTracks = state.liveMode.cameraStream
+      ? state.liveMode.cameraStream.getAudioTracks()
+      : [];
 
-    // 3. 角色声音（来自 audioDestination — gibberish 音频）
+    // 3. 角色声音（来自 audioDestination — gibberish）
     const gibberishTracks = audioDestination.stream.getAudioTracks();
 
     // 合并所有轨道
     const allTracks = [...videoTracks, ...micTracks, ...gibberishTracks];
+    if (allTracks.length === 0) {
+      showToast("无可录制的轨道");
+      return;
+    }
     const mergedStream = new MediaStream(allTracks);
 
-    // 选择编码格式
+    // 选择编码格式（优先带音频的）
     let mimeType = "";
     for (const m of ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"]) {
       if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
@@ -2611,7 +2631,7 @@ ${historyText || "（对话刚刚开始）"}
     updateRecordingTimer();
     state.liveMode.recordTimerInterval = setInterval(updateRecordingTimer, 500);
 
-    showToast("开始录制 — 用户声音+角色声音+画面表情");
+    showToast("开始录制 — 画面+你的声音+角色声音");
   }
 
   function stopLiveRecording(silent = false) {
@@ -2621,9 +2641,14 @@ ${historyText || "（对话刚刚开始）"}
       state.liveMode.mediaRecorder.stop();
     }
 
-    // 释放麦克风流
+    // 释放合并流（不杀原始 cameraStream 的音频轨，只杀 merged stream 的引用）
     if (state.liveMode.recordStream) {
-      state.liveMode.recordStream.getTracks().forEach(t => t.stop());
+      state.liveMode.recordStream.getTracks().forEach(t => {
+        // 只停 video/gibberish 轨，不停 camera 的音频轨
+        if (t.kind !== "audio" || !state.liveMode.cameraStream || !state.liveMode.cameraStream.getAudioTracks().includes(t)) {
+          t.stop();
+        }
+      });
       state.liveMode.recordStream = null;
     }
 
