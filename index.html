@@ -2050,8 +2050,13 @@ ${topic}
   let _ttsLineActive = false; // 是否有句子正在朗读中
 
   function speakSegments(segments, idx, chainId, opts) {
-    if (idx >= segments.length) { _ttsLineActive = false; return; }
-    if (chainId !== _ttsChainId) { _ttsLineActive = false; return; } // 已被新句取消
+    if (idx >= segments.length) {
+      // 整句所有分段读完 → 释放标记，让下一句可以开始
+      _ttsLineActive = false;
+      if (opts.subject) opts.subject.lastSpokenLineIndex = null;
+      return;
+    }
+    if (chainId !== _ttsChainId) { _ttsLineActive = false; return; }
 
     const seg = segments[idx].trim();
     if (!seg) {
@@ -2068,7 +2073,6 @@ ${topic}
 
     // 音高微变 ±10%，不同片段略有起伏
     let pitchVar = 0.90 + (hashStr(seg + idx + "p") % 21) / 100;
-    // 句末语调：疑问 ↑  感叹 ↑  陈述 ↓
     const isLast = idx === segments.length - 1;
     if (isLast && /？$/.test(seg)) pitchVar += 0.08;
     else if (isLast && /！$/.test(seg)) pitchVar += 0.04;
@@ -2077,7 +2081,7 @@ ${topic}
 
     // 句末语速微调
     if (isLast && /[。！？]$/.test(seg)) {
-      utter.rate = clampTTSRate(opts.rate * rateVar * 0.94); // 句末稍慢收尾
+      utter.rate = clampTTSRate(opts.rate * rateVar * 0.94);
     }
 
     utter.volume = opts.volume;
@@ -2085,15 +2089,8 @@ ${topic}
 
     utter.onend = () => {
       if (chainId !== _ttsChainId) return;
-      // 段间停顿 150~300ms，模仿换气/思考
       const pause = 150 + (hashStr(seg + "pause") % 150);
       setTimeout(() => {
-        if (isLast && opts.subject && opts.dialogue) {
-          // 整句读完 → 推进台词到下一句
-          const subj = opts.subject;
-          const speed = Math.max(2.0, Number(subj.lineSpeed) || 3.5);
-          subj.dialogueStartedAt -= speed * 1000;
-        }
         speakSegments(segments, idx + 1, chainId, opts);
       }, pause);
     };
@@ -2107,13 +2104,13 @@ ${topic}
     window.speechSynthesis.speak(utter);
   }
 
-  function playTTS(subject, dialogue) {
+  function playTTS(subject, dialogue, force = false) {
     if (!('speechSynthesis' in window)) return;
     const text = String(dialogue.line || "").trim();
     if (!text) return;
 
-    // 只有上一句还在朗读时才取消，避免打断当前句
-    if (_ttsLineActive) {
+    // force 模式（试听按钮）取消旧句；正常循环不打断
+    if (force) {
       try { window.speechSynthesis.cancel(); } catch {}
       _ttsChainId += 1;
     }
@@ -2137,8 +2134,10 @@ ${topic}
     if (!force && subject.lastSpokenLineIndex === dialogue.index) return;
     const wantTTS = subject.voiceMode !== "gibberish" && 'speechSynthesis' in window;
     if (wantTTS) {
+      // 上一句 TTS 还在朗读中 → 不打断，等读完自动推进
+      if (_ttsLineActive && !force) return;
       subject.lastSpokenLineIndex = dialogue.index;
-      playTTS(subject, dialogue);
+      playTTS(subject, dialogue, force);
     } else {
       // playGibberish 内部还有 lastSpokenLineIndex 检查，幂等
       playGibberish(subject, dialogue, force);
@@ -3169,7 +3168,7 @@ ${historyText || "（对话刚刚开始）"}
         // 试听一下当前模式
         if (target.voiceEnabled !== false) {
           const dialogue = getCurrentDialogueState(target, performance.now());
-          if (key === "tts") playTTS(target, dialogue);
+          if (key === "tts") playTTS(target, dialogue, true);
           else playGibberish(target, { ...dialogue, index: `mode_${Date.now()}` }, true);
         }
         refreshControls();
