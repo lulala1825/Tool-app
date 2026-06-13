@@ -2051,9 +2051,16 @@ ${topic}
 
   function speakSegments(segments, idx, chainId, opts) {
     if (idx >= segments.length) {
-      // 整句所有分段读完 → 释放标记，让下一句可以开始
+      // 整句读完 → 精确推进到下一句，不受时间堆积影响
       _ttsLineActive = false;
-      if (opts.subject) opts.subject.lastSpokenLineIndex = null;
+      if (opts.subject && opts.dialogue) {
+        const subj = opts.subject;
+        const lines = getDialogueLines(subj);
+        const speed = Math.max(2.0, Number(subj.lineSpeed) || 3.5);
+        const nextIdx = (opts.dialogue.index + 1) % lines.length;
+        subj.dialogueStartedAt = performance.now() - (nextIdx * speed * 1000);
+        subj.lastSpokenLineIndex = null;
+      }
       return;
     }
     if (chainId !== _ttsChainId) { _ttsLineActive = false; return; }
